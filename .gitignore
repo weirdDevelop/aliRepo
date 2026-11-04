@@ -6,3 +6,4 @@
 /crm/uploads/
 *.log
 *.cache
+/*.zip

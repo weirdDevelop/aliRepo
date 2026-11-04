@@ -33,7 +33,7 @@ SchemaV4::ensure();   // جدول‌ها و ستون‌های تازه، بدو�
 Auth::start();
 
 require_once __DIR__ . '/modules/Brand.php';
-if (!defined('ELB_VERSION')) define('ELB_VERSION', '2.1.6-jk');   // 1.0.1: نقش نمایشی · 1.0.2-jk: دستیار فروش و اتصال API · 1.0.3-jk: برندها، پایگاه دانش، امنیت، پیگیری و نظرسنجی · 1.0.4-jk: گزارش روزانه‌ی بله و پیگیری بعد از رد استعلام · 1.0.5-jk: رفع خطای Provider returned error · 1.0.6-jk: انتخاب کانال‌های دستیار · 1.0.8-jk: پاسخ در پس‌زمینه، در حال نوشتن، نام دستیار، گفتگوهای دارای مسئول · 1.0.9-jk: لحن کوتاه، تأیید یک‌باره، درخواست تماس · 1.0.10-jk: محله‌های همسایه، هاستل، بدون سؤال تکراری · 1.0.11-jk: پیگیری خودکار استعلام، پروفایل دستیار در ویجت، دکمه‌های سریع، پیامک خودکار لینک
+require_once __DIR__ . '/core/Version.php';   // ELB_VERSION (2.2.0: shared with api.php) — history:   // 1.0.1: نقش نمایشی · 1.0.2-jk: دستیار فروش و اتصال API · 1.0.3-jk: برندها، پایگاه دانش، امنیت، پیگیری و نظرسنجی · 1.0.4-jk: گزارش روزانه‌ی بله و پیگیری بعد از رد استعلام · 1.0.5-jk: رفع خطای Provider returned error · 1.0.6-jk: انتخاب کانال‌های دستیار · 1.0.8-jk: پاسخ در پس‌زمینه، در حال نوشتن، نام دستیار، گفتگوهای دارای مسئول · 1.0.9-jk: لحن کوتاه، تأیید یک‌باره، درخواست تماس · 1.0.10-jk: محله‌های همسایه، هاستل، بدون سؤال تکراری · 1.0.11-jk: پیگیری خودکار استعلام، پروفایل دستیار در ویجت، دکمه‌های سریع، پیامک خودکار لینک
 
 $page = $_GET['page'] ?? 'dashboard';
 
@@ -108,6 +108,7 @@ if ($api !== null) {
     Viewer::gateApi((string)$api);
     ApiPolicy::enforceApi((string)$api);        // 2.1.5: API access = page access (R-02)
     header('Content-Type: application/json; charset=utf-8');
+    header('X-Request-Id: ' . Log::requestId());   // 2.2.0: same id appears in logs/app-*.log
     require __DIR__ . '/api/handler.php';
     exit;
 }

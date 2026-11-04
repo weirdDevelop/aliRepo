@@ -35,6 +35,10 @@
 
 `ak_live_` keys per tenant, shown once, stored hashed, scopes = permission keys subset, optional restriction to org units, expiry, last-used; management under `identity.api_key.*`. First call for integrators: `GET /v2/ping` (key, scopes, rate limit) — mirrors YarAPI `GET /ping`.
 
-## 5. Related
+## 5. Implemented so far
+
+2.2.0: `GET /v2/platform/ping` (any user) · `GET /v2/platform/health` (admin) · `GET /v2/platform/jobs?status=` (admin) · `POST /v2/platform/jobs/{id}/retry` (admin, Idempotency-Key, audited). Access levels are `any|admin|<page>` until permission keys land in 2.3.0.
+
+## 6. Related
 
 `error-contract.md` · `webhooks.md` · `connector-contracts.md`

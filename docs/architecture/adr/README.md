@@ -4,10 +4,10 @@
 |---|---|---|
 | [ADR-001](ADR-001.md) | Modular monolith in plain PHP, strangler migration | Proposed |
 | [ADR-002](ADR-002.md) | Code organisation: `src/<Context>` with facades, extensions folder | Proposed |
-| [ADR-003](ADR-003.md) | Customer master is `eb_persons`; CRM profiles reference `person_id` | Proposed ⚑ |
+| [ADR-003](ADR-003.md) | Customer master is `eb_persons`; CRM profiles reference `person_id` | **Accepted** |
 | [ADR-004](ADR-004.md) | Tenancy: single-tenant installs + database-per-tenant for hosted SaaS | Proposed ⚑ |
 | [ADR-005](ADR-005.md) | Versioned migrations with baseline adoption | Proposed |
-| [ADR-006](ADR-006.md) | Permission keys + roles + scopes; pages map to keys | Proposed ⚑ |
+| [ADR-006](ADR-006.md) | Permission keys + roles + scopes; pages map to keys | **Accepted** |
 | [ADR-007](ADR-007.md) | Work (tasks/projects) as a new context; CRM tasks migrated into it | Proposed |
 | [ADR-008](ADR-008.md) | Events via transactional outbox; generic DB job queue; cron-driven | Proposed |
 | [ADR-009](ADR-009.md) | REST v2 API alongside panel RPC; YarAPI-compatible conventions | Proposed |

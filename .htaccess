@@ -12,6 +12,9 @@
 </FilesMatch>
 
 # پوشه‌های داخلی مستقیم سرو نشوند
-RedirectMatch 403 ^/.*/(core|modules|channels)/.*$
-RedirectMatch 403 ^/.*/(logs|config\.php)$
-RedirectMatch 403 ^/.*/(cli|data)/.*$
+# 2.2.0: الگوهای قبلی فقط وقتی کار می‌کردند که برنامه در یک زیرپوشه نصب شده بود (مثلاً /marketing/core/…)؛
+# روی ریشه‌ی دامنه (/core/…) محافظتی نبود. الگوهای جدید هر دو حالت را می‌پوشانند. crm/ و api.php دست نخورده‌اند.
+RedirectMatch 403 ^(/.*)?/(core|modules|channels|src|migrations|tools|tests|docs|data|cli)/
+RedirectMatch 403 ^(/.*)?/(logs)(/|$)
+RedirectMatch 403 ^(/.*)?/config\.php$
+RedirectMatch 403 ^(/.*)?/api/[^/]+\.php$

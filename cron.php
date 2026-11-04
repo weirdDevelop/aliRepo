@@ -67,6 +67,9 @@ if (!CronGuard::allowed($cronAuth)) {
     exit('forbidden');
 }
 try { Database::run("INSERT INTO eb_settings (k, v) VALUES ('cron.last_run', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [date('Y-m-d H:i:s')]); } catch (Throwable $e) {}
+// 2.2.0: migrationهای غیرمخربِ معلق خودکار اعمال می‌شوند (هرگز خطا به بیرون نمی‌دهد)
+require_once __DIR__ . '/core/Migrations.php';   // explicit: the autoloader is loaded later in this file
+try { Migrations::autoApply('cron'); } catch (Throwable $e) { error_log('[cron migrate] ' . $e->getMessage()); }
 
 // ---- قفل سراسری اجرا (مورد ۶: ارسال دوباره) ----
 // cron هر دقیقه اجرا می‌شود ولی یک اجرا می‌تواند بیش از یک دقیقه طول بکشد
@@ -176,7 +179,19 @@ try { if (class_exists('CrmBridge') && CrmBridge::present() && CrmBridge::ready(
 $anRollup = 'skip';
 try { $anRollup = AnalyticsRollup::run(); } catch (Throwable $e) { $anRollup = 'error: ' . $e->getMessage(); }
 
-echo "Cron OK - scheduled: {$n} - queue: {$queue['processed']}(↑{$queue['sent']} ✗{$queue['failed']} ⏳{$queue['remaining']}) - sms_inbound: {$sms} - campaign_steps: {$camp} - dlr: {$dlr} - cleaned: {$cleaned} - apichi: {$apichiPolled} - ig_posts: {$igPub['published']}/{$igPub['failed']} - flows: {$flowsRun} - followups: {$followups} - agent: " . ($agentLc ? json_encode($agentLc, JSON_UNESCAPED_UNICODE) : '-') . " - ivr: " . ($ivr ? $ivr['sent'] . '/' . $ivr['failed'] : '-') . " - crm: " . ($crmSync ? $crmSync['processed'] . ($crmSync['done'] ? '' : '+') : '-') . " - {$anRollup} - " . date('Y-m-d H:i:s');
+// 2.2.0: هسته‌ی جدید — کارهای پس‌زمینه (eb_jobs) و تحویل رویدادها (eb_outbox)، با سقف زمانی
+$kernel = '-';
+try {
+    require_once __DIR__ . '/core/Autoload.php';
+    if (Migrations::isApplied('0002_kernel')) {
+        if (is_file(__DIR__ . '/src/bootstrap.php')) require_once __DIR__ . '/src/bootstrap.php';
+        $jw = Jobs::work(15, 100);
+        $od = Outbox::dispatch(200, 10);
+        $kernel = "jobs {$jw['done']}/{$jw['retry']}/{$jw['dead']} events {$od['delivered']}/{$od['failed']}/{$od['dead']}";
+    }
+} catch (Throwable $e) { error_log('[cron kernel] ' . $e->getMessage()); $kernel = 'error'; }
+
+echo "Cron OK - kernel: {$kernel} - scheduled: {$n} - queue: {$queue['processed']}(↑{$queue['sent']} ✗{$queue['failed']} ⏳{$queue['remaining']}) - sms_inbound: {$sms} - campaign_steps: {$camp} - dlr: {$dlr} - cleaned: {$cleaned} - apichi: {$apichiPolled} - ig_posts: {$igPub['published']}/{$igPub['failed']} - flows: {$flowsRun} - followups: {$followups} - agent: " . ($agentLc ? json_encode($agentLc, JSON_UNESCAPED_UNICODE) : '-') . " - ivr: " . ($ivr ? $ivr['sent'] . '/' . $ivr['failed'] : '-') . " - crm: " . ($crmSync ? $crmSync['processed'] . ($crmSync['done'] ? '' : '+') : '-') . " - {$anRollup} - " . date('Y-m-d H:i:s');
 } finally {
     // قفل در هر حالت آزاد شود، وگرنه cron تا بسته‌شدن اتصال می‌خوابد
     try { Database::run("SELECT RELEASE_LOCK(?)", [$cronLock]); } catch (Throwable $e) { /* بی‌صدا */ }

@@ -17,6 +17,9 @@ it('cron: right key → runs and writes heartbeat', function (Sandbox $sb) {
     cron_set($sb, 'REAL-KEY');
     $r = (new Browser($sb->url))->request('GET', 'cron.php?key=REAL-KEY');
     ok($r['code'] !== 403, 'got ' . $r['code']);
+    // 2.2.0: cron applies pending migrations and runs the kernel step (jobs + outbox)
+    ok(preg_match('/kernel: jobs \d+\/\d+\/\d+ events \d+\/\d+\/\d+/', $r['body']) === 1, 'kernel step missing: ' . substr($r['body'], 0, 200));
+    eq('applied', $sb->pdo()->query("SELECT status FROM eb_migrations WHERE name = '0002_kernel'")->fetchColumn());
     ok((bool)$sb->pdo()->query("SELECT v FROM eb_settings WHERE k='cron.last_run'")->fetchColumn(), 'heartbeat');
 });
 it('cron: no key, request from the server itself → runs (keeps existing hosting crons working)', function (Sandbox $sb) {

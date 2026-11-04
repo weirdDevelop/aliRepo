@@ -41,18 +41,27 @@ function out($data): void {
     exit;
 }
 // هر خطای پیش‌بینی‌نشده به‌جای پاسخ خالی (= «پاسخ نامعتبر سرور») به JSON خوانا تبدیل می‌شود
+// 2.2.0: جزئیات خطا فقط برای مدیر واقعی و در لاگ؛ بقیه پیام عمومی + شناسه‌ی درخواست می‌بینند
+// (قبلاً متن exception — شامل SQL، مسیر فایل و داده — برای هر کاربری برمی‌گشت).
 set_exception_handler(function (Throwable $e) {
     error_log('[elanban api] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
-    if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['ok' => false, 'error' => 'خطای داخلی: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    $rid = class_exists('Log') ? Log::requestId() : '';
+    if (class_exists('Log')) Log::error('rpc.unhandled', ['api' => (string)($_GET['api'] ?? ''), 'exception' => get_class($e), 'error' => $e->getMessage(), 'at' => basename($e->getFile()) . ':' . $e->getLine()]);
+    if (!headers_sent()) { header('Content-Type: application/json; charset=utf-8'); if ($rid) header('X-Request-Id: ' . $rid); }
+    $msg = (class_exists('Auth') && Auth::isRealAdmin()) ? 'خطای داخلی: ' . $e->getMessage() : 'خطای داخلی؛ شناسه‌ی درخواست را برای پشتیبانی بفرستید: ' . $rid;
+    echo json_encode(['ok' => false, 'error' => $msg, 'code' => 'internal_error', 'request_id' => $rid], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 });
 register_shutdown_function(function () {
     $err = error_get_last();
     if (!$err || !in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
     if (!headers_sent()) header('Content-Type: application/json; charset=utf-8');
     $msg = $err['message'];
-    if (stripos($msg, 'Maximum execution time') !== false) $msg = 'زمان اجرا تمام شد (سرور یار API دیر جواب داد)';
-    echo json_encode(['ok' => false, 'error' => 'خطای سرور: ' . mb_substr($msg, 0, 300) . ' (' . basename($err['file']) . ':' . $err['line'] . ')'], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+    $rid = class_exists('Log') ? Log::requestId() : '';
+    if (class_exists('Log')) Log::error('rpc.fatal', ['api' => (string)($_GET['api'] ?? ''), 'error' => mb_substr($msg, 0, 500), 'at' => basename($err['file']) . ':' . $err['line']]);
+    if (stripos($msg, 'Maximum execution time') !== false) $public = 'زمان اجرا تمام شد (سرور یار API دیر جواب داد)';
+    elseif (class_exists('Auth') && Auth::isRealAdmin()) $public = 'خطای سرور: ' . mb_substr($msg, 0, 300) . ' (' . basename($err['file']) . ':' . $err['line'] . ')';
+    else $public = 'خطای سرور؛ شناسه‌ی درخواست را برای پشتیبانی بفرستید: ' . $rid;
+    echo json_encode(['ok' => false, 'error' => $public, 'code' => 'internal_error', 'request_id' => $rid], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
 });
 
 // نکته: `app_base_url()` به `core/Url.php` منتقل شد تا index/cron/webhook هم از همان
@@ -2901,7 +2910,11 @@ switch ($api) {
             Database::forgetSchemaCache();
             $mg = ['groups'=>0,'merged'=>0];
             try { $mg = Persons::backfillInstagramMerge(); } catch (Throwable $e) {}
-            out(['ok'=>true, 'message'=>'جداول بررسی و در صورت نیاز ساخته/تکمیل شدند'
+            // 2.2.0: migrationهای نسخه‌دار (فقط غیرمخرب)
+            $mig = Migrations::run(false, false, 'admin:' . (int)Auth::id());
+            if (!$mig['ok']) out(['ok'=>false, 'error'=>'migration ' . ($mig['stopped_at'] ?? '') . ' ناموفق: ' . ($mig['reason'] ?? ''), 'migrations'=>$mig]);
+            out(['ok'=>true, 'migrations'=>$mig, 'message'=>'جداول بررسی و در صورت نیاز ساخته/تکمیل شدند'
+                . ($mig['applied'] ? ' · migration: ' . implode('، ', $mig['applied']) : '')
                 . ($mg['merged'] ? ' · ' . $mg['merged'] . ' پروفایل تکراری اینستاگرام (هم‌یوزرنیم در پیج‌های مختلف) ادغام شد' : '')]);
         } catch (Throwable $e) {
             out(['ok'=>false, 'error'=>$e->getMessage()]);

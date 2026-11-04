@@ -119,6 +119,34 @@ PHP;
 
     public function serverLog(): string { return (string)@file_get_contents($this->dir . '/logs/server.log'); }
 
+    /**
+     * Run PHP code inside the sandbox install (config + Database + Autoload + src/bootstrap loaded).
+     * The code must `return` a JSON-serialisable value. Runs in a fresh process.
+     */
+    public function php(string $code)
+    {
+        $f = $this->dir . '/__it_' . bin2hex(random_bytes(4)) . '.php';
+        file_put_contents($f, "<?php\nchdir(" . var_export($this->dir, true) . ");\n\$config = require 'config.php';\n"
+            . "require_once 'core/Database.php'; require_once 'core/Autoload.php'; require_once 'core/Version.php';\n"
+            . "Database::init(\$config['db']);\nif (is_file('src/bootstrap.php')) require_once 'src/bootstrap.php';\n"
+            . "\$__r = (function () use (\$config) {\n" . $code . "\n})();\necho \"\\n__RESULT__\" . json_encode(\$__r);\n");
+        $out = (string)shell_exec('php ' . escapeshellarg($f) . ' 2>&1');
+        @unlink($f);
+        $p = strrpos($out, "__RESULT__");
+        if ($p === false) throw new RuntimeException("sandbox php failed:\n" . substr($out, 0, 2000));
+        return json_decode(substr($out, $p + 10), true);
+    }
+
+    /** Start a php snippet in the background (for concurrency tests); returns the process handle. */
+    public function phpAsync(string $code)
+    {
+        $f = $this->dir . '/__it_async_' . bin2hex(random_bytes(4)) . '.php';
+        file_put_contents($f, "<?php\nchdir(" . var_export($this->dir, true) . ");\n\$config = require 'config.php';\n"
+            . "require_once 'core/Database.php'; require_once 'core/Autoload.php'; require_once 'core/Version.php';\n"
+            . "Database::init(\$config['db']);\nif (is_file('src/bootstrap.php')) require_once 'src/bootstrap.php';\n" . $code . "\n");
+        return proc_open(['php', $f], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    }
+
     public function __destruct()
     {
         if ($this->server) { proc_terminate($this->server); proc_close($this->server); }

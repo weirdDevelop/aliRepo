@@ -16,3 +16,9 @@ Milestone 1 is complete when these are approved, changed, or rejected. Each has 
 | D10 | **Secret rotation (R-01, R-18)** | Rotate now: DB password, Jakojast tokens, cron key, CRM-stored Telefonchy/SMS/site-DB/AI keys; `app_key` with planned re-encryption | Every month of delay keeps exposed values valid | security-architecture |
 
 Reply with the numbers you approve as-is, and changes for the rest.
+
+## Owner responses
+
+| Date | Approved | Pending |
+|---|---|---|
+| 2026-11-04 | **D1** (customer master = `eb_persons`), **D4** (permission keys + roles + scopes), **D8** (order: kernel → permissions → organization → tasks, then CRM) | D2, D3, D5, D6, D7, D9, D10 |
