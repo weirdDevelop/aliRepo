@@ -224,7 +224,9 @@ class InstagramApichiDriver extends InstagramRoboclickDriver
 
     private function call(string $method, string $path, array $body = [], bool $idempotent = false): array
     {
-        $r = InstagramApichiHttp::request($this->apiBase, $this->apiKey, $method, $path, $method === 'GET' ? null : $body, $idempotent ? ('eb-' . bin2hex(random_bytes(10))) : null);
+        // 2.1.5: deterministic Idempotency-Key inside an Idempotency scope (R-04); random outside, as before
+        $idem = strtoupper($method) !== 'GET' ? Idempotency::key($path, $body + ['igAccountId' => $this->igAccountId]) : null;
+        $r = InstagramApichiHttp::request($this->apiBase, $this->apiKey, $method, $path, $method === 'GET' ? null : $body, $idem);
         $this->logCall($path, $body, $r);
         return $r;
     }

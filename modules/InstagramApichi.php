@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../core/Idempotency.php';   // 2.1.5: stable Idempotency-Key scopes (R-04)
 /**
  * modules/InstagramApichi.php
  * اتصال اعلان‌بان به پیج‌های اینستاگرام از طریق API خودمان «یار API» (به‌جای اتصال مستقیم سرویس‌دهنده).
@@ -385,7 +386,11 @@ class InstagramApichi
             $payload = self::payloadFromEnvelope($ev);
             if (!$payload) { self::logOutcome($source, $ev, 'unsupported', true, null); return 'unsupported:' . $name; }
 
-            $res = IgWebhookPipeline::process($account, $payload, self::driverForAccount($account), $config, self::LOG);
+            // 2.1.5: every provider call made while handling this event gets a key derived from the
+            // event id, so a retried event (row released below on error) cannot double-send.
+            $res = Idempotency::run('evt-' . $eventId, function () use ($account, $payload, $config) {
+                return IgWebhookPipeline::process($account, $payload, self::driverForAccount($account), $config, self::LOG);
+            });
             self::logOutcome($source, $ev, 'پردازش شد → ' . (is_string($res) ? $res : json_encode($res)) . ' (پیج «' . $account['label'] . '»)', $res !== 'error', null, $payload);
             return $res;
         } catch (Throwable $e) {

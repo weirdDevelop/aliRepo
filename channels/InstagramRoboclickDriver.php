@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../core/Idempotency.php';   // 2.1.5: stable Idempotency-Key (R-04)
 /**
  * channels/InstagramRoboclickDriver.php
  * کانال دایرکت اینستاگرام از طریق اتصال مستقیم (روش قدیمی؛ آدرس در InstagramRoboclick::baseUrl()).
@@ -309,7 +310,8 @@ class InstagramRoboclickDriver implements ChannelInterface
         $headers = ['Content-Type: application/json', 'X-Api-Key: ' . $this->accountKey];
         // ۲.۰.۶: سرویس برای هر درخواستِ تغییردهنده کلید یکتا می‌خواهد (پاسخ عمومی کامنت و … هم)
         if ($idempotent || strtoupper($method) !== 'GET') {
-            $headers[] = 'Idempotency-Key: ' . bin2hex(random_bytes(12));
+            // 2.1.5: deterministic inside an Idempotency scope (event/queue row/post); random otherwise
+            $headers[] = 'Idempotency-Key: ' . Idempotency::key($path, $body);
         }
 
         $ch = curl_init($url);

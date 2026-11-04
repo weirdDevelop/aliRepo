@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../core/Idempotency.php';   // 2.1.5: stable Idempotency-Key scopes (R-04)
 /**
  * modules/Queue.php
  * صف پایدار ارسال انبوه. هر گیرنده یک ردیف در eb_queue دارد، پس اگر پردازش وسط کار
@@ -123,7 +124,11 @@ class Queue
                         break;
                     }
 
-                    $res = Sender::sendToPerson((int)$row['person_id'], $message, $priority, $sendId);
+                    // 2.1.5: one stable key per queue row — a row re-queued by requeueStaleClaims() after a
+                    // worker crash re-sends with the same Idempotency-Key (providers that support it de-dupe)
+                    $res = Idempotency::run('q-' . (int)$row['id'], function () use ($row, $message, $priority, $sendId) {
+                        return Sender::sendToPerson((int)$row['person_id'], $message, $priority, $sendId);
+                    });
                     $okSend = !empty($res['ok']);
                     Database::run(
                         "UPDATE eb_queue SET status = ?, channel = ?, error = ?, processed_at = NOW() WHERE id = ?",

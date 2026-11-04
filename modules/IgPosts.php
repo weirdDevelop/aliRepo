@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../core/Idempotency.php';   // 2.1.5: stable Idempotency-Key scopes (R-04)
 /**
  * modules/IgPosts.php
  * صف انتشار پست و استوری اینستاگرام.
@@ -139,7 +140,8 @@ class IgPosts
         $due = Database::all("SELECT * FROM eb_ig_posts WHERE status='pending' AND run_at <= NOW() ORDER BY run_at ASC LIMIT " . max(1, $limit));
         $ok = 0; $fail = 0;
         foreach ($due as $row) {
-            $r = self::publishOne($row);
+            // 2.1.5: same key on every attempt for this post → no duplicate publish after a stale re-claim
+            $r = Idempotency::run('igpost-' . (int)$row['id'], function () use ($row) { return self::publishOne($row); });
             if (!empty($r['skipped'])) continue;
             $r['ok'] ? $ok++ : $fail++;
         }

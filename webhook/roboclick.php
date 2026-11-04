@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../core/Idempotency.php';   // 2.1.5: stable Idempotency-Key scopes (R-04)
 /**
  * webhook/roboclick.php
  * نقطه‌ی دریافت رویدادهای اینستاگرام از سرویس‌دهنده — چندپیجی، با پایپ‌لاین کامل.
@@ -69,7 +70,14 @@ if ($eventId) {
 $driver = InstagramRoboclick::driverForAccount($account);
 
 // پایپ‌لاین مشترک (دایرکت/کامنت/کلیک دکمه) — modules/IgWebhookPipeline.php
-IgWebhookPipeline::process($account, $payload, $driver, $config, 'instagram_roboclick');
+// 2.1.5: keys derived from the RoboClick event id (R-04); without an id, keys stay random as before
+if ($eventId) {
+    Idempotency::run('rc' . $accountId . '-' . $eventId, function () use ($account, $payload, $driver, $config) {
+        IgWebhookPipeline::process($account, $payload, $driver, $config, 'instagram_roboclick');
+    });
+} else {
+    IgWebhookPipeline::process($account, $payload, $driver, $config, 'instagram_roboclick');
+}
 
 if (!headers_sent()) http_response_code(200);   // دستیار فروش ممکن است پاسخ را زودتر فرستاده باشد
 echo 'OK';
