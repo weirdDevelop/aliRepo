@@ -61,6 +61,6 @@ Global run lock, then: `Queue::process`, `Scheduler::processDue`, `Campaigns::pr
 | Migrations | Imperative, idempotent `CREATE TABLE IF NOT EXISTS` + `addColumn` in `core/Schema.php`, `core/SchemaV4.php`, and self-migrating models in CRM (`ensure*Columns`). No versioned migration table, no down-migrations. |
 | Caching | File cache `logs/cache/*.cache` (`core/Cache.php`), incl. column-existence caches and per-user desk counters. |
 | Logging | `eb_api_log`, `ApichiLog`, `telefonchy_api_logs`, `elanban_api_logs`, PHP `error_log`. No correlation IDs. |
-| Secrets | `config.php` (plaintext); channel tokens in `eb_settings` encrypted with `app_key` (per `config.php` comment; encryption code not yet audited); RoboClick account keys AES-256 per supplied RoboClick doc. |
+| Secrets | `config.php` (plaintext); channel bot tokens stored **plaintext** in `eb_settings` (`ChannelManager::saveToken`, verified in M1 — the `config.php` comment overstates it); Search Console and AI keys are AES-256-GCM encrypted with a key derived from `app_key`; RoboClick account keys AES-256 per supplied RoboClick doc. |
 | Licensing | `modules/License.php`, `AnalyticsLicense.php`, `cli/analytics_gen_license.php` (HMAC licences). |
 | AI | `modules/Ai.php`, `SalesAgent.php`, `AiKb.php`, `AgentKb.php` (OpenAI-compatible providers; customer data is sent to the configured provider). |
