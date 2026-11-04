@@ -56,3 +56,16 @@ Severity: Critical / High / Medium / Low. "Action" items that change production 
 | R-05 | **Fixed** — `core/PhoneNumber.php`; Elanban merge key output identical to legacy (differential test) | 10 unit tests + end-to-end webhook test (fails on baseline with `989121234567`) |
 | R-01, R-06, R-13, P-03, P-04 | Open — next batch / owner decision | — |
 | R-07 | **Partly addressed** — `tests/run.php` (unit, no DB) and `tests/integration/run.php` (disposable sandbox) exist; no CI yet | — |
+
+## 5. Status after patch 2.1.6 (2026-11-04)
+
+| ID | Status | Evidence |
+|---|---|---|
+| **R-18 (new, High)** | **Fixed** — `GET /crm/api/settings` returned all CRM secrets (Telefonchy token, SMS key/password, site DB password, AI keys) to non-admins with "all sections" and to the read-only viewer; CRM settings page rendered them; `sms/send` sent arbitrary SMS. CRM `settings` module now admin-only. **Exposure cannot be ruled out → rotate those secrets.** | 8 integration tests; reproduced on the pre-fix commit with live requests |
+| R-06 / P-13 | **Fixed** — `core/CronGuard.php`; dashboard "cron running" step | 6 unit + 6 integration tests |
+| R-13 / P-05 / P-06 | **Fixed** — cookie flags, strict mode, login throttling | 6 unit + 4 integration tests |
+| P-04 | **Fixed** — role/permissions/is_active reloaded per request | 3 integration tests |
+| P-03 | **By design** (documented "all sections" option); empty "selected only" trap blocked | Playwright browser test |
+| P-09 | Same design as P-03 in the bridged CRM; the dangerous part (admin-only CRM settings) fixed under R-18 | — |
+| P-10 | **Fixed** — unmapped CRM resources deny by default | all 32 routes verified mapped/open |
+| Still open | R-01 (+ CRM secrets above), R-04 remainder (non-Instagram channels), R-09 (AI data flow consent), R-14 (record-level HR scoping), R-08/R-16 (migrations, string dates) | — |
