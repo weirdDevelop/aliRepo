@@ -87,6 +87,7 @@ $export = $_GET['export'] ?? null;
 if ($export !== null) {
     Csrf::requireValid();
     Viewer::gateExport();
+    ApiPolicy::enforceExport((string)$export);   // 2.1.5: export = page access (R-02)
     require __DIR__ . '/api/export.php';
     exit;
 }
@@ -95,6 +96,7 @@ $api = $_GET['api'] ?? null;
 if ($api !== null) {
     Csrf::requireValid();
     Viewer::gateApi((string)$api);
+    ApiPolicy::enforceApi((string)$api);        // 2.1.5: API access = page access (R-02)
     header('Content-Type: application/json; charset=utf-8');
     require __DIR__ . '/api/handler.php';
     exit;

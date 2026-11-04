@@ -113,7 +113,7 @@ PHP;
     /** Create a panel user. $perms = permissions_json array or null. */
     public function user(string $username, string $role, ?array $perms = null): void
     {
-        $this->pdo()->prepare("INSERT INTO eb_users (username, password_hash, role, permissions_json) VALUES (?, ?, ?, ?)")
+        $this->pdo()->prepare("INSERT IGNORE INTO eb_users (username, password_hash, role, permissions_json) VALUES (?, ?, ?, ?)")
             ->execute([$username, password_hash('pw-' . $username, PASSWORD_DEFAULT), $role, $perms === null ? null : json_encode($perms)]);
     }
 
