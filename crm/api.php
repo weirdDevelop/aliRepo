@@ -2471,6 +2471,7 @@ function handleSettingsRoutes(array $segments, $method)
             // دفعه‌ی بعد سریع‌تر پیدا شود.
             $allowed = ['system_name', 'primary_color', 'telefonchy_service_id',
                        'telefonchy_token', 'telefonchy_base_url', 'commission_rate',
+                       'telefonchy_webhook_token', 'telefonchy_webhook_auth',   // 2.1.5 (R-03)
                        'min_settlement_amount', 'settlement_day',
                        'transcription_provider', 'vosk_worker_url', 'ffmpeg_path',
                        'groq_api_key', 'gapgpt_api_key', 'gapgpt_transcription_model', 'openai_api_key',

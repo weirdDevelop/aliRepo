@@ -41,10 +41,9 @@
  *     یک نوع ping/heartbeat دوره‌ای از سمت تلفنچی هستند (نه رویداد
  *     واقعی)؛ چون cuid ندارند، بی‌خطر نادیده گرفته می‌شوند.
  *
- * امنیت: تلفنچی مقدار webservice_token را داخل payload می‌فرستد. طبق مستندات
- * باید با توکن ذخیره‌شده مقایسه و در صورت عدم تطابق رد شود؛ ولی در تست
- * واقعی این عدم تطابق حتی برای رویدادهای واقعی رخ داد. فعلاً این چک
- * غیرمسدودکننده است: فقط لاگ می‌شود، رویداد رد نمی‌شود.
+ * امنیت (2.1.5): webservice_token داخل payload با «توکن وب‌هوک» یا «توکن API» مقایسه
+ * می‌شود (hash_equals) و در حالت پیش‌فرض enforce، رویدادِ بدون توکن یا با توکن اشتباه
+ * با 403 رد می‌شود. حالت monitor (تنظیمات CRM) رفتار قبلی را نگه می‌دارد.
  *
  * نکته: طبق مستندات، سرور باید در سریع‌ترین حالت ممکن 200 برگرداند. از
  * نسخه‌ی فعلی، پردازش hangup دیگر یک درخواست شبکه‌ی مسدودکننده به تلفنچی
@@ -105,24 +104,37 @@ $isCdr = !$isRinging && !$isHangup && (
 $cuid = $eventPayloadData['cuid'] ?? $eventPayloadData['unique_id']
      ?? ($isCdr ? ($eventPayloadData['call_id'] ?? null) : null);
 
-// ===== اعتبارسنجی امنیتی: توکن داخل payload باید با توکن ذخیره‌شده یکی باشد =====
-// نکته‌ی مهم (در حال دیباگ): در تست‌های واقعی، این توکن با توکن API
-// (webservice-token) مطابقت نداشت با اینکه webhook قطعاً از تلفنچی
-// می‌آمد. تا زمانی که علت دقیق این عدم تطابق مشخص شود (مثلاً شاید
-// تلفنچی برای webhook از یک توکن جداگانه استفاده می‌کند، نه همان
-// API token)، این چک را غیرمسدودکننده کردیم: فقط لاگ می‌کنیم و رویداد
-// را رد نمی‌کنیم، تا تماس‌های واقعی از دست نروند.
-$expectedToken = Report::getSetting('telefonchy_token');
-$receivedToken = $eventPayloadData['webservice_token'] ?? null;
-$tokenMismatch = (!empty($expectedToken) && !empty($receivedToken) && $receivedToken !== $expectedToken);
-
+// ===== اعتبارسنجی امنیتی (2.1.5 — R-03) =====
+// قبلاً عدم تطابق فقط لاگ می‌شد و رویدادِ بدون توکن یا نصبِ بدون توکن هم پذیرفته می‌شد؛
+// یعنی هر کسی با داشتن آدرس می‌توانست تماس/سرنخ جعلی بسازد. حالا در حالت پیش‌فرض
+// (enforce) رد می‌شود. رویداد واقعیِ ردشده از دست نمی‌رود: cron_sync همان تماس را از
+// API تلفنچی (/calls) در اجرای بعدی می‌گیرد. توضیح کامل: TelefonchyWebhookAuth.php
+if (TelefonchyWebhookAuth::isEmpty($payload)) {
+    // heartbeat / POST خالی تلفنچی (چیزی برای پردازش ندارد)
+    http_response_code(200);
+    echo json_encode(['success' => true, 'skipped' => 'empty']);
+    exit;
+}
+$authMode = TelefonchyWebhookAuth::mode(Report::getSetting('telefonchy_webhook_auth'));
+$authResult = TelefonchyWebhookAuth::check($payload, [
+    Report::getSetting('telefonchy_webhook_token'),
+    Report::getSetting('telefonchy_token'),
+]);
+$tokenMismatch = ($authResult !== TelefonchyWebhookAuth::OK);
 if ($tokenMismatch) {
-    Logger::error('Telefonchy webhook: token mismatch (not blocking - investigating)', [
-        'expected_prefix' => substr($expectedToken, 0, 10) . '...',
-        'received_prefix' => substr($receivedToken, 0, 10) . '...',
-        'expected_len' => strlen($expectedToken),
-        'received_len' => strlen($receivedToken),
+    $receivedToken = TelefonchyWebhookAuth::receivedToken($payload);
+    Logger::error('Telefonchy webhook: auth ' . $authResult . ($authMode === 'enforce' ? ' — rejected' : ' — accepted (monitor mode)'), [
+        'reason'       => $authResult,
+        'mode'         => $authMode,
+        'received_len' => $receivedToken !== null ? strlen($receivedToken) : 0,   // never the token itself
+        'cuid'         => is_scalar($cuid) ? (string)$cuid : null,
+        'remote_ip'    => $_SERVER['REMOTE_ADDR'] ?? null,
     ]);
+    if ($authMode === 'enforce') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'forbidden']);
+        exit;
+    }
 }
 
 try {
@@ -188,7 +200,7 @@ try {
         'http_code'        => 200,
         'success'          => true,
         'response_preview' => $diagnosticPreview,
-        'error_message'    => $tokenMismatch ? '⚠️ توکن مطابقت نداشت ولی رویداد پردازش شد (در حال دیباگ)' : null,
+        'error_message'    => $tokenMismatch ? '⚠️ احراز هویت وب‌هوک ناموفق (' . $authResult . ') — در حالت monitor پردازش شد' : null,
         'duration_ms'      => (int)round((microtime(true) - $startTime) * 1000),
     ]);
 

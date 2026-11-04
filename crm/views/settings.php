@@ -147,8 +147,22 @@ $user = $currentUser;
               <label class="form-label">آدرس پایه API</label>
               <input type="text" class="form-control" id="setting-telefonchy_base_url" value="<?= Helpers::e($settings['telefonchy_base_url'] ?? 'https://panel.telefonchy.com/webservice/v1') ?>">
             </div>
+            <div class="form-group">
+              <label class="form-label">توکن وب‌هوک (اختیاری)</label>
+              <input type="password" class="form-control" id="setting-telefonchy_webhook_token" value="<?= Helpers::e($settings['telefonchy_webhook_token'] ?? '') ?>" placeholder="فقط اگر تلفنچی در وب‌هوک توکنی غیر از توکن وب‌سرویس می‌فرستد">
+              <small style="color:var(--text-muted);font-size:11px">مقدار <code>webservice_token</code> داخل رویدادها با این توکن یا توکن وب‌سرویس بالا مقایسه می‌شود.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">اعتبارسنجی وب‌هوک تماس</label>
+              <?php $__wa = ($settings['telefonchy_webhook_auth'] ?? '') === 'monitor' ? 'monitor' : 'enforce'; ?>
+              <select class="form-control" id="setting-telefonchy_webhook_auth">
+                <option value="enforce" <?= $__wa === 'enforce' ? 'selected' : '' ?>>سخت‌گیرانه — رویداد بدون توکن یا با توکن اشتباه رد شود (پیشنهادی)</option>
+                <option value="monitor" <?= $__wa === 'monitor' ? 'selected' : '' ?>>فقط پایش — پردازش شود و در لاگ ثبت شود (ناامن، موقت)</option>
+              </select>
+              <small style="color:var(--text-muted);font-size:11px">رویداد ردشده از دست نمی‌رود؛ همگام‌سازی دوره‌ای (cron) تماس را از API تلفنچی می‌گیرد. علت رد در error.log با «Telefonchy webhook: auth» ثبت می‌شود.</small>
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
-              <button class="btn btn-primary" onclick="saveSettings(['telefonchy_service_id','telefonchy_token','telefonchy_base_url'])">💾 ذخیره</button>
+              <button class="btn btn-primary" onclick="saveSettings(['telefonchy_service_id','telefonchy_token','telefonchy_base_url','telefonchy_webhook_token','telefonchy_webhook_auth'])">💾 ذخیره</button>
               <button class="btn btn-light" onclick="testTelefonchy()">🧪 تست اتصال</button>
               <button class="btn btn-light" onclick="runDbMigrate()" id="migrate-btn" title="بعد از جایگزین کردن فایل‌های PHP جدید، این را بزنید تا ستون‌ها/جدول‌های جدید دیتابیس ساخته شوند">🛠 به‌روزرسانی جداول دیتابیس</button>
               <button class="btn btn-light" onclick="runReconcileStaleCalls()" id="reconcile-btn" title="تماس‌هایی که به‌خاطر نرسیدن وب‌هوک hangup روی «در حال زنگ خوردن» گیر کرده‌اند را همین الان (بدون صبر برای کرون) اصلاح می‌کند">🔄 اصلاح تماس‌های گیرکرده</button>
