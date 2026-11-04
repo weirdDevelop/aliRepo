@@ -41,9 +41,19 @@ $page = $_GET['page'] ?? 'dashboard';
 if ($page === 'login') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Csrf::requireValid();
-        $ok = Auth::attempt($_POST['username'] ?? '', $_POST['password'] ?? '');
-        if ($ok) { header('Location: index.php'); exit; }
-        $loginError = 'نام کاربری یا رمز اشتباه است';
+        // 2.1.6 (R-13): محدودیت تلاش ورود — در زمان قفل، رمز اصلاً بررسی نمی‌شود
+        $ltUser = (string)($_POST['username'] ?? '');
+        $ltIp = class_exists('Links') ? (string)Links::clientIp(!empty($config['trust_proxy'])) : (string)($_SERVER['REMOTE_ADDR'] ?? '');
+        $ltWait = LoginThrottle::wait($ltUser, $ltIp);
+        if ($ltWait > 0) {
+            error_log('[elanban login] throttled ip=' . $ltIp);
+            $loginError = 'تلاش ناموفق زیاد بود؛ ' . max(1, (int)ceil($ltWait / 60)) . ' دقیقه‌ی دیگر دوباره امتحان کنید.';
+        } else {
+            $ok = Auth::attempt($ltUser, (string)($_POST['password'] ?? ''));
+            if ($ok) { LoginThrottle::succeeded($ltUser, $ltIp); header('Location: index.php'); exit; }
+            LoginThrottle::failed($ltUser, $ltIp);
+            $loginError = 'نام کاربری یا رمز اشتباه است';
+        }
     }
     require __DIR__ . '/views/login.php';
     exit;

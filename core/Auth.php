@@ -12,10 +12,31 @@ class Auth
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            // 2.1.6 (R-13): کوکی نشست httponly + samesite=Lax (+ secure روی HTTPS)؛ شناسه‌ی نشستِ ساختگی پذیرفته نمی‌شود.
+            // همان مقادیری که crm/config.php برای همین نشست مشترک می‌گذارد.
+            if (!headers_sent()) {
+                ini_set('session.use_strict_mode', '1');
+                ini_set('session.use_only_cookies', '1');
+                ini_set('session.cookie_httponly', '1');
+                ini_set('session.cookie_samesite', 'Lax');
+                if (self::isHttps()) ini_set('session.cookie_secure', '1');
+            }
             session_start();
         }
         // نشست نمایشی: هیچ کوئری نوشتنی اجرا نشود
         if (self::isViewer() && class_exists('Database')) Database::$readOnly = true;
+    }
+
+    /** درخواست روی HTTPS است؟ X-Forwarded-Proto فقط وقتی trust_proxy روشن است (مثل r.php). */
+    public static function isHttps(): bool
+    {
+        if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') return true;
+        if ((string)($_SERVER['SERVER_PORT'] ?? '') === '443') return true;
+        $cfg = $GLOBALS['config'] ?? null;
+        if (is_array($cfg) && !empty($cfg['trust_proxy'])) {
+            return strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+        }
+        return false;
     }
 
     /** تلاش برای ورود؛ true در صورت موفقیت */
