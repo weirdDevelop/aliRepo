@@ -118,7 +118,8 @@ try {
     // ===== دسترسی ماژول‌ها در API (قبلاً فقط در صفحه‌ها بود؛ حالا همه‌ی همکاران اعلان‌بان حساب CRM دارند) =====
     if (defined('CRM_BRIDGED') && CRM_BRIDGED && !in_array($segments[0], ['auth', 'dashboard', 'elanban'], true)) {
         $__u = Auth::currentUser();
-        if ($__u && $__u['role'] !== 'admin' && is_array($__u['permissions'])) {
+        // 2.1.6 (P-09/P-10): برای همه‌ی غیرمدیرها اجرا می‌شود (قبلاً با permissions=null کاملاً رد می‌شد)
+        if ($__u && $__u['role'] !== 'admin') {
             $__map = [
                 'customers' => 'customers', 'hosts' => 'hosts', 'host-properties' => 'hosts', 'host-settlements' => 'hosts',
                 'host_leads' => 'host_leads', 'leads' => 'leads', 'site-inquiries' => 'leads', 'tickets' => 'tickets',
@@ -126,9 +127,13 @@ try {
                 'calls' => 'calls', 'pipeline' => 'calls', 'sync' => 'calls', 'export-calls' => 'calls', 'play-recording' => 'calls',
                 'reports' => 'reports', 'site-sales' => 'reports', 'users' => 'settings', 'settings' => 'settings', 'sms' => 'settings',
                 'site-sync' => 'settings', 'staff' => 'staff', 'evaluations' => 'staff', 'leaves' => 'leaves',
+                'references' => 'leads',
             ];
+            // 2.1.6 (P-10): مسیری که در نقشه نیست برای غیرمدیر بسته است (قبلاً باز بود) — فقط این‌ها آزادند:
+            $__open = ['search', 'auth', 'dashboard', 'elanban'];
             $__need = $__map[$segments[0]] ?? null;
-            $__ok = $__need === null || Auth::hasPermission($__need);
+            $__ok = $__need === null ? in_array($segments[0], $__open, true) : Auth::hasPermission($__need);
+            if ($segments[0] === 'users' && ($segments[1] ?? '') === 'online-status' && $method === 'GET') $__ok = true;   // صفحه‌ی پرسنل
             if ($segments[0] === 'search') $__ok = Auth::hasPermission('customers') || Auth::hasPermission('leads') || Auth::hasPermission('hosts') || Auth::hasPermission('tickets');
             if ($segments[0] === 'references' && $method === 'GET') $__ok = true;   // فهرست مراجع در فرم سرنخ
             if (!$__ok) {

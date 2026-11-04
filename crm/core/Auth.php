@@ -499,11 +499,19 @@ class Auth
      * @param string $permissionKey
      * @return bool
      */
+    /** ماژول‌هایی که فقط مدیر (نقش admin) به آن‌ها دسترسی دارد، صرف‌نظر از مجوزها */
+    const ADMIN_ONLY_MODULES = ['settings'];
+
     public static function hasPermission($permissionKey)
     {
         $user = self::currentUser();
         if (!$user) return false;
         if ($user['role'] === 'admin') return true;
+
+        // 2.1.6 (P-09): ماژول «تنظیمات» CRM (تنظیمات، کاربران، پیامک، همگام‌سازی سایت) فقط برای مدیر —
+        // مثل اعلان‌بان که crm_settings را فقط-مدیر می‌داند. قبلاً اپراتورِ «همه‌ی بخش‌ها» و حساب نمایشی
+        // (permissions=null) به GET /api/settings با همه‌ی توکن‌ها و رمزها، و ارسال پیامک دلخواه دسترسی داشتند.
+        if (in_array($permissionKey, self::ADMIN_ONLY_MODULES, true)) return false;
 
         // اگر migration هنوز اجرا نشده (permissions=null به‌جای [])، یعنی
         // کل سیستم دسترسی هنوز فعال نشده - برای جلوگیری از قفل‌شدن ناگهانی
