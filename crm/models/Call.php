@@ -275,11 +275,9 @@ class Call
     /** نرمال‌سازی شماره‌ی ایران: فقط رقم، +98/0098/98 → 0. نامعتبر → null */
     public static function normalizeLeadPhone($number)
     {
-        $d = preg_replace('/\D+/', '', (string)$number);
-        if (strpos($d, '0098') === 0) $d = '0' . substr($d, 4);
-        elseif (strlen($d) === 12 && strpos($d, '98') === 0) $d = '0' . substr($d, 2);
-        elseif (strlen($d) === 10 && $d[0] !== '0') $d = '0' . $d;
-        return preg_match('/^0[1-9]\d{9}$/', $d) ? $d : null;
+        // 2.1.5: shared normaliser; accepts everything the previous rule accepted (same value),
+        // plus Persian digits and "+98 0…" forms. Iranian mobile/landline only, as before.
+        return PhoneNumber::iranNumber($number);
     }
 
     public static function markStatusReconcileAttempt($callId)

@@ -399,13 +399,9 @@ class CallSyncManager
      */
     private function normalizeIranianMobile($number)
     {
-        if ($number === null || $number === '') return null;
-        $digits = preg_replace('/\D+/', '', (string)$number);
-        if ($digits === '') return null;
-        if (strlen($digits) === 10 && $digits[0] === '9') {
-            $digits = '0' . $digits;
-        }
-        return $digits;
+        // 2.1.5: shared normaliser. Real numbers → canonical (09…/0…/+…), so +98/0098 and
+        // Persian digits now match the customer records; extensions/codes are kept as digits.
+        return PhoneNumber::callParty($number);
     }
 
     /**
@@ -812,12 +808,18 @@ class CallSyncManager
         $db = Database::getInstance();
         $existing = $key !== '' ? Call::findByCuid($key) : null;
         if (!$existing && $startedAt && ($src || $dst)) {
+            // 2.1.5: include the legacy (pre-normalisation) forms so rows stored before the
+            // normaliser change are still found and no duplicate call row is created on backfill.
+            $nums = array_values(array_unique(array_map('strval', array_filter([
+                $src, $dst, PhoneNumber::legacyCallParty($rawSrc), PhoneNumber::legacyCallParty($rawDst),
+            ], function ($v) { return $v !== null && $v !== ''; }))));
+            $ph = implode(', ', array_fill(0, count($nums), '?'));
             $existing = $db->fetchOne(
                 "SELECT * FROM calls
                   WHERE started_at BETWEEN (? - INTERVAL 3 MINUTE) AND (? + INTERVAL 3 MINUTE)
-                    AND (call_source IN (?, ?) OR call_dest IN (?, ?))
+                    AND (call_source IN ({$ph}) OR call_dest IN ({$ph}))
                   ORDER BY ABS(TIMESTAMPDIFF(SECOND, started_at, ?)) LIMIT 1",
-                [$startedAt, $startedAt, (string)$src, (string)$dst, (string)$src, (string)$dst, $startedAt]
+                array_merge([$startedAt, $startedAt], $nums, $nums, [$startedAt])
             ) ?: null;
         }
 
