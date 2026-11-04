@@ -45,3 +45,14 @@ Severity: Critical / High / Medium / Low. "Action" items that change production 
 4. **Canonical customer master**: `eb_persons` (recommended, with CRM `customers`/`leads` becoming CRM-owned profiles that reference it) vs CRM `customers`.
 5. **Instagram provider strategy**: keep 4 adapters, or standardise on YarAPI (which the Oct 2026 guide positions as the single public API) and freeze the others.
 6. **Language of internal documentation** (current project docs are Persian; master prompt is English).
+
+## 4. Status after patch 2.1.5 (2026-11-04)
+
+| ID | Status | Evidence |
+|---|---|---|
+| R-02 | **Fixed** — central API/export authorisation (`core/ApiPolicy.php`, generated map) | 9 unit + 6 integration tests; blocking tests fail on the pre-fix commit |
+| R-03 | **Fixed** — Telefonchy webhook enforced (`TelefonchyWebhookAuth`), monitor escape hatch | 9 unit + 8 integration tests; forged-event tests fail on the pre-fix commit |
+| R-04 | **Fixed for YarAPI/RoboClick** at the 4 retry points (`core/Idempotency.php`); Bale/Telegram/Rubika/SMS have no provider idempotency → still open | 10 unit tests; live provider behaviour on key reuse with a different body is undocumented |
+| R-05 | **Fixed** — `core/PhoneNumber.php`; Elanban merge key output identical to legacy (differential test) | 10 unit tests + end-to-end webhook test (fails on baseline with `989121234567`) |
+| R-01, R-06, R-13, P-03, P-04 | Open — next batch / owner decision | — |
+| R-07 | **Partly addressed** — `tests/run.php` (unit, no DB) and `tests/integration/run.php` (disposable sandbox) exist; no CI yet | — |
