@@ -23,8 +23,34 @@ class Auth
             }
             session_start();
         }
+        self::refresh();
         // نشست نمایشی: هیچ کوئری نوشتنی اجرا نشود
         if (self::isViewer() && class_exists('Database')) Database::$readOnly = true;
+    }
+
+    /**
+     * 2.1.6 (P-04): نقش و دسترسی‌ها در هر درخواست از eb_users خوانده می‌شوند، نه فقط هنگام ورود.
+     * قبلاً تغییر دسترسی یا غیرفعال کردن یک کاربر تا خروج/ورود بعدی او اثر نداشت.
+     * کاربر حذف‌شده یا غیرفعال همان لحظه از نشست خارج می‌شود. در حالت «ورود به‌جای»
+     * (impersonation) دسترسی‌های کاربرِ هدف خوانده می‌شود، مثل قبل.
+     */
+    private static function refresh(): void
+    {
+        $uid = (int)($_SESSION['eb_uid'] ?? 0);
+        if ($uid <= 0 || !class_exists('Database', false)) return;
+        try {
+            $u = Database::one("SELECT role, permissions_json, is_active FROM eb_users WHERE id = ?", [$uid]);
+        } catch (Throwable $e) {
+            return;   // DB not reachable: keep the session as-is rather than logging everyone out
+        }
+        if (!$u || !(int)($u['is_active'] ?? 1)) {
+            self::audit('session_revoked', $u ? 'user deactivated' : 'user deleted', $uid, $uid);
+            $_SESSION = [];
+            if (session_status() === PHP_SESSION_ACTIVE) session_regenerate_id(true);
+            return;
+        }
+        $_SESSION['eb_role'] = $u['role'];
+        $_SESSION['eb_perms'] = $u['permissions_json'] ?? null;
     }
 
     /** درخواست روی HTTPS است؟ X-Forwarded-Proto فقط وقتی trust_proxy روشن است (مثل r.php). */

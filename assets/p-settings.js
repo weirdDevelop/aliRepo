@@ -333,6 +333,12 @@ function readPerms() {
   const rid = $('#opRoleId');
   return {pages, groups:$$('input[name=opGroup]:checked').map(c => +c.value), can_delete_customers:val('opDel'), mask_pii:val('opMask'), role:role ? role.dataset.v : 'operator', role_id:rid && rid.value ? +rid.value : 0};
 }
+// 2.1.6 (P-03): «فقط بخش‌های انتخابی» با هیچ تیکی، در سرور یعنی «همه‌ی بخش‌ها» — جلوی این اشتباه را بگیر
+function scopeTrap(pr) {
+  const on = $('.seg[data-name=opScope] .on');
+  return on && on.dataset.v === 'some' && !pr.pages.length && !pr.role_id && pr.role !== 'viewer';
+}
+const SCOPE_TRAP_MSG = 'حداقل یک بخش را تیک بزنید، یا «همه‌ی بخش‌ها» را انتخاب کنید (بدون تیک یعنی دسترسی به همه‌ی بخش‌ها)';
 A['op-new'] = () => {
   const dw = drawer({title:'اپراتور جدید', sub:'حساب ورود همکار و دسترسی‌هایش', size:'lg', head:`<span class="chi md" style="background:var(--accent-soft);color:var(--accent-ink)">${ic('user-plus')}</span>`, body:`<div class="stack s20" style="padding:18px">
     <div class="fg">${field('نام نمایشی', '<input class="inp" id="onName" maxlength="100" placeholder="مثلاً سارا محمدی">')}${field('عنوان شغلی', '<input class="inp" id="onTitle" maxlength="100" placeholder="کارشناس پشتیبانی">')}${field('نام کاربری', '<input class="inp ltr" id="onUser" autocomplete="off">')}${field('رمز عبور', '<input class="inp ltr" id="onPass" type="text" autocomplete="off">', 'حداقل ۸ کاراکتر')}</div>
@@ -341,6 +347,7 @@ A['op-new'] = () => {
     const u = val('onUser'), pw = val('onPass');
     if (!u) return toast('نام کاربری را وارد کنید', 'err');
     if (pw.length < 8) return toast('رمز عبور حداقل ۸ کاراکتر باشد', 'err');
+    if (scopeTrap(readPerms())) return toast(SCOPE_TRAP_MSG, 'err');
     const r = await run(e.currentTarget, () => L().api('operator_create', Object.assign({username:u, password:pw}, readPerms())));
     if (!r.ok) return toast(r.error, 'err');
     if (val('onName') || val('onTitle')) await L().api('desk_user_profile', {id:r.id, display_name:val('onName'), title:val('onTitle')});
@@ -367,6 +374,7 @@ A['op-edit'] = el => {
   dw.el.querySelector('[data-ok]').onclick = async e => {
     const pw = admin ? '' : val('oePass');
     if (pw && pw.length < 8) return toast('رمز جدید حداقل ۸ کاراکتر باشد', 'err');
+    if (!admin && scopeTrap(readPerms())) return toast(SCOPE_TRAP_MSG, 'err');
     const res = await run(e.currentTarget, async () => {
       const a = await L().api('desk_user_profile', {id:+r.id, display_name:val('oeName'), title:val('oeTitle'), color:val('oeColor')});
       if (!a.ok || admin) return a;
