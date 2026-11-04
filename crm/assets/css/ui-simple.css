@@ -1,0 +1,173 @@
+/* جاکجاست - لایه‌ی رابط ساده (UI simplification) - 1405/08 */
+:root{--jj-gap:14px;--jj-card:#fff;--jj-ok:#16a34a;--jj-bad:#dc2626;--jj-warn:#d97706;--jj-info:#0284c7;--jj-ink:#1f2937;--jj-mute:#6b7280;--jj-line:#eceef1}
+body{background:#f5f6f8}
+#main-content{padding:20px 24px}
+.jj-muted{color:var(--jj-mute);font-size:12px}
+
+/* --- سایدبار --- */
+#sidebar nav{padding:6px 0}
+#sidebar nav .nav-section{margin-top:14px;padding:6px 20px 4px;font-size:11px;letter-spacing:0;color:rgba(255,255,255,.4)}
+#sidebar nav a{padding:9px 14px;margin:1px 10px;font-size:13.5px}
+#sidebar nav a .nav-badge{font-size:10.5px;min-width:22px;text-align:center}
+
+/* --- هدر صفحه و بازه --- */
+.jj-pagehead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:var(--jj-gap)}
+.jj-title{margin:0;font-size:20px;font-weight:800;color:var(--jj-ink)}
+.jj-sub{font-size:12px;color:var(--jj-mute);margin-top:4px}
+.jj-range{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fff;border:1px solid var(--jj-line);border-radius:12px;padding:5px}
+.jj-chip{padding:6px 12px;border-radius:8px;font-size:12.5px;color:var(--jj-ink);text-decoration:none;white-space:nowrap}
+.jj-chip:hover{background:#f3f4f6}
+.jj-chip.on{background:var(--primary);color:#fff;font-weight:700}
+.jj-custom{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--jj-mute);padding-inline-start:6px;border-inline-start:1px solid var(--jj-line)}
+.jj-custom input{width:96px;border:1px solid var(--jj-line);border-radius:7px;padding:5px 6px;font-size:12px;font-family:inherit;text-align:center}
+.jj-custom.on input{border-color:var(--primary)}
+
+/* --- کاشی‌ها --- */
+.jj-tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--jj-gap);margin-bottom:var(--jj-gap)}
+.jj-tile{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--jj-line);border-radius:14px;padding:14px 16px;text-decoration:none;color:var(--jj-ink);transition:box-shadow .15s,border-color .15s;position:relative}
+a.jj-tile:hover{box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.jj-tile.on{border-color:var(--primary);box-shadow:0 0 0 2px rgba(229,2,65,.12)}
+.jj-tile-label{font-size:12.5px;color:var(--jj-mute);font-weight:600}
+.jj-tile-val{font-size:26px;font-weight:800;line-height:1.2}
+.jj-tile-hint{font-size:11.5px;color:var(--jj-mute)}
+.jj-tile.ok .jj-tile-val{color:var(--jj-ok)}
+.jj-tile.bad .jj-tile-val{color:var(--jj-bad)}
+
+/* --- کارت‌ها --- */
+.jj-card{background:#fff;border:1px solid var(--jj-line);border-radius:14px;margin-bottom:var(--jj-gap);overflow:hidden}
+.jj-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--jj-line);font-weight:700;font-size:14px;flex-wrap:wrap}
+.jj-card-head small{font-weight:400;color:var(--jj-mute);font-size:11.5px}
+.jj-two{display:grid;grid-template-columns:3fr 2fr;gap:var(--jj-gap)}
+.jj-scroll{max-height:290px;overflow-y:auto;padding:4px 8px}
+.jj-scroll > p{padding:10px}
+.jj-alert{background:#fef2f2;border:1px solid #fecaca;color:var(--jj-bad);border-radius:12px;padding:12px 16px;margin-bottom:var(--jj-gap);font-size:13px}
+
+/* --- فیلتر و جدول --- */
+.jj-filters{justify-content:flex-start;font-weight:400}
+.jj-filters select{border:1px solid var(--jj-line);border-radius:8px;padding:7px 8px;font-family:inherit;font-size:12.5px;background:#fff}
+.jj-search{flex:1;min-width:200px;display:flex;align-items:center;gap:6px;border:1px solid var(--jj-line);border-radius:8px;padding:0 10px;background:#fff}
+.jj-search input{border:0;outline:0;flex:1;padding:8px 0;font-family:inherit;font-size:13px;background:transparent}
+.jj-count{font-size:12px;color:var(--jj-mute);margin-inline-start:auto}
+.jj-toggle{font-size:12px;color:var(--jj-mute);display:flex;align-items:center;gap:4px;cursor:pointer;user-select:none}
+.jj-table th{font-size:12px;color:var(--jj-mute);font-weight:600;background:#fafafa;white-space:nowrap}
+.jj-table td{vertical-align:middle;font-size:13px;padding-top:9px;padding-bottom:9px}
+.jj-table tbody tr:hover{background:#fafbfc}
+.jj-time{white-space:nowrap;font-weight:700}
+.jj-time small,.jj-table td small{display:block;font-weight:400;color:var(--jj-mute);font-size:11px;margin-top:2px}
+.jj-table td small a{color:var(--jj-ink);text-decoration:none}
+.jj-num{color:var(--jj-ink);font-weight:700;text-decoration:none;font-family:inherit;letter-spacing:.3px}
+.jj-num:hover{color:var(--primary)}
+.jj-lead{color:var(--jj-warn)!important}
+.jj-table td a{text-decoration:none}
+.jj-dir{font-size:12px;white-space:nowrap}
+.jj-pill{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.jj-pill.ok{background:#dcfce7;color:#166534}.jj-pill.bad{background:#fee2e2;color:#991b1b}.jj-pill.warn{background:#fef3c7;color:#92400e}.jj-pill.info{background:#e0f2fe;color:#075985}
+.jj-dur{font-variant-numeric:tabular-nums;white-space:nowrap}
+.jj-actions{white-space:nowrap;text-align:left}
+.jj-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--jj-line);background:#fff;cursor:pointer;font-size:14px;color:var(--jj-ink);text-decoration:none;margin-inline-start:3px}
+.jj-btn:hover{border-color:var(--primary);color:var(--primary)}
+.jj-btn.call{background:#ecfdf5;border-color:#a7f3d0}
+.jj-adv,.jj-adv-inline{display:none}
+body.jj-show-adv .jj-adv{display:table-cell}
+body.jj-show-adv .jj-adv-inline{display:inline-flex}
+.jj-adv select{font-size:11px;padding:2px 4px;border-radius:6px;max-width:130px}
+.jj-empty{text-align:center;padding:40px!important;color:var(--jj-mute)}
+.jj-pages{padding:12px 16px;justify-content:center}
+
+/* --- بیشتر --- */
+.jj-more{background:#fff;border:1px solid var(--jj-line);border-radius:14px;margin-bottom:var(--jj-gap)}
+.jj-more summary{cursor:pointer;padding:12px 16px;font-size:13px;color:var(--jj-mute);font-weight:600;list-style:none}
+.jj-more summary::-webkit-details-marker{display:none}
+.jj-more[open] summary{border-bottom:1px solid var(--jj-line);color:var(--jj-ink)}
+.jj-more-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.jj-row{display:flex;gap:8px;flex-wrap:wrap}
+.jj-row select{border:1px solid var(--jj-line);border-radius:8px;padding:7px 8px;font-family:inherit;font-size:12.5px}
+
+/* --- داشبورد: یکدست‌سازی کارت‌ها --- */
+.card{border-radius:14px;border:1px solid var(--jj-line);box-shadow:none}
+.kpi-card{border-radius:14px;box-shadow:none;border:1px solid var(--jj-line)}
+.kpi-grid{gap:var(--jj-gap)}
+
+/* --- موبایل --- */
+@media (max-width:1100px){.jj-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}.jj-two{grid-template-columns:1fr}}
+@media (max-width:768px){
+  #main-content{padding:12px 12px 84px}
+  .jj-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .jj-tile{padding:12px}.jj-tile-val{font-size:22px}
+  .jj-range{width:100%;overflow-x:auto;flex-wrap:nowrap}
+  .jj-custom{flex-wrap:nowrap}
+  .jj-count,.jj-toggle{margin-inline-start:0}
+  /* جدول تماس‌ها به‌صورت کارت */
+  .jj-table thead{display:none}
+  .jj-table,.jj-table tbody{display:block;width:100%}
+  .data-table.jj-table tbody tr{display:flex!important;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:12px 14px;border-bottom:1px solid var(--jj-line)}
+  .data-table.jj-table tbody td{display:block!important;border:0;padding:0!important;font-size:12.5px}
+  .data-table.jj-table tbody td.jj-adv{display:none!important}
+  body.jj-show-adv .data-table.jj-table tbody td.jj-adv{display:block!important;flex-basis:100%}
+  .jj-table td:nth-child(2){order:1;flex:1 1 55%;font-size:14px}
+  .jj-table td:nth-child(1){order:2;text-align:left}
+  .jj-table td:nth-child(3){order:3}
+  .jj-table td:nth-child(4){order:4}
+  .jj-table td:nth-child(5){order:5;flex:1}
+  .jj-table td:nth-child(6){order:6}
+  .jj-table td.jj-actions{order:7;flex-basis:100%;text-align:right}
+  .jj-btn{width:38px;height:36px}
+  .jj-empty{flex-basis:100%}
+}
+@media (max-width:768px){
+  #missed-alerts-box > div,#live-calls-box > div{flex-wrap:wrap!important;gap:6px!important}
+  #missed-alerts-box > div > div:first-child,#live-calls-box > div > div:first-child{flex:1 1 100%!important}
+  #missed-alerts-box > div > div:nth-child(2){min-width:0!important;text-align:right!important;flex:1 1 100%}
+  .jj-scroll{max-height:340px}
+}
+.kpi-grid.jj-kpi6{grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:var(--jj-gap)}
+.jj-kpi6 .kpi-card{padding:14px}
+.jj-kpi6 .kpi-card .kpi-value{font-size:22px}
+.jj-kpi6 .kpi-card .kpi-icon{width:34px;height:34px;font-size:16px}
+@media (max-width:1100px){.kpi-grid.jj-kpi6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:768px){.kpi-grid.jj-kpi6{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* ===== پیگیری مرحله‌ای شماره‌ها (r7) ===== */
+.pl-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.pl-tab{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:#fff;border:1px solid var(--border,#e5e7eb);color:var(--text,#111);text-decoration:none;font-size:13px;font-weight:600;transition:.15s}
+.pl-tab:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.pl-tab .pl-cnt{background:#f1f5f9;border-radius:20px;padding:1px 9px;font-size:12px}
+.pl-tab .pl-warn{font-style:normal;color:#b45309;background:#fef3c7;border-radius:20px;padding:1px 7px;font-size:11px}
+.pl-tab.on{border-color:transparent;color:#fff}
+.pl-tab.on .pl-cnt{background:rgba(255,255,255,.25);color:#fff}
+.pl-tab.on.pl-no_answer,.pl-mv.pl-no_answer:hover,.pl-step.pl-no_answer{background:#ef4444}
+.pl-tab.on.pl-followup,.pl-mv.pl-followup:hover,.pl-step.pl-followup{background:#f59e0b}
+.pl-tab.on.pl-host,.pl-step.pl-host{background:#0ea5e9}
+.pl-tab.on.pl-link_sent,.pl-mv.pl-link_sent:hover,.pl-step.pl-link_sent{background:#3b82f6}
+.pl-tab.on.pl-confirmed,.pl-mv.pl-confirmed:hover,.pl-step.pl-confirmed{background:#8b5cf6}
+.pl-tab.on.pl-reserved,.pl-mv.pl-reserved:hover,.pl-step.pl-reserved{background:#16a34a}
+.pl-tab.on.pl-not_reserved,.pl-mv.pl-not_reserved:hover,.pl-step.pl-not_reserved{background:#64748b}
+.pl-moves{display:flex;flex-wrap:wrap;gap:4px;max-width:330px}
+.pl-mv{border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit}
+.pl-mv:hover{color:#fff;border-color:transparent}
+.pl-assign{font-family:inherit;font-size:12px;padding:4px;border-radius:8px;border:1px solid var(--border,#e5e7eb);max-width:150px}
+.pl-path{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:6px}
+.pl-path i{font-style:normal;color:#94a3b8}
+.pl-step{color:#fff;border-radius:8px;padding:2px 8px;font-size:11px;line-height:1.5;display:inline-flex;flex-direction:column}
+.pl-step small{color:rgba(255,255,255,.85)!important;font-size:10px}
+.pl-badge{position:absolute;top:-4px;left:-4px;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:0 5px;line-height:16px;min-width:16px;text-align:center}
+.jj-dir-tabs{display:flex;gap:6px;margin-bottom:10px}
+
+/* ۲.۰.۸: رادیوها، نام درجا، مرجع/نقش، تماس گرفته شد */
+.pl-radios{display:flex;flex-wrap:wrap;gap:4px;max-width:340px}
+.pl-rd{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:3px 8px;font-size:11px;cursor:pointer}
+.pl-rd input{margin:0;accent-color:#334155}
+.pl-rd.on{color:#fff;border-color:transparent}
+.pl-rd.on.pl-no_answer{background:#ef4444}.pl-rd.on.pl-followup{background:#f59e0b}.pl-rd.on.pl-host{background:#0ea5e9}
+.pl-rd.on.pl-link_sent{background:#3b82f6}.pl-rd.on.pl-confirmed{background:#8b5cf6}.pl-rd.on.pl-reserved{background:#16a34a}.pl-rd.on.pl-not_reserved{background:#64748b}
+.pl-name{font-family:inherit;font-size:13px;font-weight:700;border:1px dashed transparent;border-radius:6px;padding:2px 6px;width:150px;background:transparent}
+.pl-name:hover,.pl-name:focus{border-color:var(--border,#cbd5e1);background:#fff;outline:0}
+.pl-ref,.pl-role{font-family:inherit;font-size:12px;padding:3px;border-radius:8px;border:1px solid var(--border,#e5e7eb);max-width:130px}
+.pl-called{font-family:inherit;font-size:11px;border:1px dashed #94a3b8;background:#fff;border-radius:8px;padding:2px 8px;cursor:pointer;color:#475569}
+.pl-called.on{background:#dcfce7;border:1px solid #86efac;color:#166534}
+.pl-sub{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+.jj-pill.old{background:#e0e7ff;color:#3730a3}
+.jj-sumline{font-family:inherit;font-size:12px;width:100%;min-width:170px;border:1px dashed transparent;border-radius:6px;padding:3px 6px;background:transparent}
+.jj-sumline:hover,.jj-sumline:focus{border-color:var(--border,#cbd5e1);background:#fff;outline:0}
+.jj-sub-calls td{background:#f8fafc}
+.jj-more-btn{cursor:pointer;border:0;background:#eef2ff;color:#3730a3;border-radius:20px;padding:1px 9px;font-size:11px;font-family:inherit}

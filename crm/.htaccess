@@ -1,0 +1,107 @@
+# =====================================================================
+#   جاکجاست - تنظیمات Apache
+#   Jakojast - .htaccess
+# =====================================================================
+
+# فعال‌سازی mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # پایه URL پروژه (اگر در ساب‌دامنه نصب شده، / را نگه دارید.
+    # اگر در ساب‌دایرکتوری نصب شده، مسیر را تنظیم کنید: RewriteBase /jakojast/)
+    # بدون RewriteBase: در هر پوشه‌ای (مثلاً marketing/crm) درست کار می‌کند
+
+    # هدایت درخواست‌های api/ به api.php (این قانون باید قبل از قانون
+    # عمومی زیر باشد، وگرنه قانون عمومی همه‌چیز از جمله api/ را می‌قاپد
+    # و هرگز به این‌جا نمی‌رسد — این دقیقاً همان باگی بود که باعث می‌شد
+    # هیچ درخواست /api/... به api.php نرسد و خطای «route not found» بدهد)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^api/(.*)$ api.php [QSA,L]
+
+    # هدایت همه درخواست‌های غیر فایل/دایرکتوری دیگر به index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# =====================================================================
+#   جلوگیری از دسترسی مستقیم به فایل‌های حساس
+# =====================================================================
+<FilesMatch "^(config\.php|\.htaccess|\.installed|db\.sql|composer\.(json|lock))$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# =====================================================================
+#   جلوگیری از دسترسی به پوشه‌های حساس
+# =====================================================================
+RedirectMatch 403 /crm/(core|models|api_integration|logs|views|config|cron|docs|vendor)/.*$
+<FilesMatch "^(config\.php|GUIDE\.md|README\.md|composer\.json)$|\.(sql|lock)$">
+    Require all denied
+</FilesMatch>
+
+# =====================================================================
+#   تنظیمات امنیتی هدر
+# =====================================================================
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+</IfModule>
+
+# =====================================================================
+#   جلوگیری از لیست شدن دایرکتوری‌ها
+# =====================================================================
+Options -Indexes
+
+# =====================================================================
+#   تنظیمات پیش‌فرض charset
+# =====================================================================
+AddDefaultCharset UTF-8
+<IfModule mod_charset.c>
+    Charset UTF-8
+</IfModule>
+
+# =====================================================================
+#   فشرده‌سازی خروجی (GZIP)
+# =====================================================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/json
+    AddOutputFilterByType DEFLATE application/xml text/xml
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# =====================================================================
+#   کش مرورگر برای فایل‌های استاتیک
+# =====================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+# =====================================================================
+#   محدودیت آپلود (چون آپلود کاربر ممنوع است)
+# =====================================================================
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 1M
+    php_value post_max_size 1M
+    php_value memory_limit 128M
+    php_value max_execution_time 60
+</IfModule>
+
+<IfModule mod_php.c>
+    php_value upload_max_filesize 1M
+    php_value post_max_size 1M
+    php_value memory_limit 128M
+    php_value max_execution_time 60
+</IfModule>

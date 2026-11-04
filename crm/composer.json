@@ -1,0 +1,11 @@
+{
+    "name": "jakojast/crm",
+    "description": "جاکجاست - سیستم مدیریت یکپارچه (وابستگی‌های Composer فقط برای امکانات جدید مثل تبدیل صدا به متن)",
+    "require": {
+        "php": ">=8.2",
+        "b7s/whisper-php": "^1.0"
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

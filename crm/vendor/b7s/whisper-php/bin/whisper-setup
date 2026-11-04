@@ -1,0 +1,217 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * whisper-php Setup Command
+ * 
+ * This script downloads and configures Whisper binaries, models, and FFmpeg.
+ * Run after installing the package: composer require b7s/whisper-php
+ */
+
+// Find autoload.php
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+
+$autoloadPath = null;
+foreach ($autoloadPaths as $path) {
+    if (file_exists($path)) {
+        $autoloadPath = $path;
+        break;
+    }
+}
+
+if ($autoloadPath === null) {
+    echo "Error: Could not find autoload.php\n";
+    echo "Please run: composer install\n";
+    exit(1);
+}
+
+require $autoloadPath;
+
+use WhisperPHP\Config;
+use WhisperPHP\Whisper;
+use WhisperPHP\WhisperPlatformDetector;
+use WhisperPHP\WhisperPathResolver;
+
+// Parse command line arguments
+$options = getopt('', ['model:', 'language:', 'dir:', 'help']);
+
+if (isset($options['help'])) {
+    showHelp();
+    exit(0);
+}
+
+// Create configuration
+$config = new Config(
+    model: $options['model'] ?? 'base',
+    language: $options['language'] ?? 'auto',
+    dataDir: $options['dir'] ?? null,
+);
+
+// Create service
+$whisper = new Whisper($config, new class implements \WhisperPHP\Logger {
+    public function info(string $message, array $context = []): void
+    {
+        echo "ℹ️  {$message}\n";
+    }
+
+    public function error(string $message, array $context = []): void
+    {
+        echo "❌ {$message}\n";
+    }
+
+    public function warning(string $message, array $context = []): void
+    {
+        echo "⚠️  {$message}\n";
+    }
+});
+
+// Get actual data directory (resolve default if not provided)
+$platform = new WhisperPlatformDetector();
+$pathResolver = new WhisperPathResolver($platform, $config);
+$dataDir = $pathResolver->getDataDirectory();
+
+// Display header
+echo "\n";
+echo "╔══════════════════════════════════════════════════════════════╗\n";
+echo "║              whisper-php Setup Wizard                        ║\n";
+echo "╚══════════════════════════════════════════════════════════════╝\n";
+echo "\n";
+
+// Show configuration
+echo "📋 Configuration:\n";
+echo "   Model:    {$config->model}\n";
+echo "   Language: {$config->language}\n";
+echo "   Data Dir: {$dataDir}\n";
+echo "\n";
+
+// Check current status
+echo "📊 Checking current status...\n";
+$status = $whisper->getStatus();
+echo "   Binary:  " . ($status['binary'] ? '✓ Installed' : '✗ Missing') . "\n";
+echo "   Model:   " . ($status['model'] ? '✓ Installed' : '✗ Missing') . "\n";
+echo "   FFmpeg:  " . ($status['ffmpeg'] ? '✓ Installed' : '✗ Missing') . "\n";
+echo "   GPU:     " . ($status['gpu'] ? '✓ Available' : '✗ Not available') . "\n";
+echo "\n";
+
+// Check if already installed
+if ($status['binary'] && $status['model'] && $status['ffmpeg']) {
+    echo "✅ Whisper is already installed and configured!\n";
+    echo "\n";
+    echo "💡 To reinstall, delete the data directory\n";
+    echo "       \"rm -rf {$dataDir}\"\n";
+    echo "   and run this command again:\n";
+    echo "       \"vendor/bin/whisper-setup\"\n";
+    echo "\n";
+    exit(0);
+}
+
+// Confirm installation
+echo "⚙️  This will download:\n";
+if (!$status['binary']) {
+    echo "   • Whisper binary (~50-100 MB)\n";
+}
+if (!$status['model']) {
+    echo "   • Model '{$config->model}' (~100-500 MB depending on size)\n";
+}
+if (!$status['ffmpeg']) {
+    echo "   • FFmpeg binary (~50-80 MB)\n";
+}
+echo "\n";
+
+// Ask for confirmation in interactive mode
+if (isInteractive()) {
+    echo "Continue? [Y/n]: ";
+    $handle = fopen("php://stdin", "r");
+    $line = fgets($handle);
+    fclose($handle);
+    
+    if (strtolower(trim($line)) === 'n') {
+        echo "❌ Setup cancelled.\n";
+        exit(0);
+    }
+}
+
+echo "\n";
+echo "🚀 Starting setup...\n";
+echo "   This may take a few minutes depending on your internet connection.\n";
+echo "\n";
+
+try {
+    // Run setup
+    $success = $whisper->setup();
+    
+    if ($success) {
+        echo "\n";
+        echo "╔══════════════════════════════════════════════════════════════╗\n";
+        echo "║                  ✅ Setup Completed!                         ║\n";
+        echo "╚══════════════════════════════════════════════════════════════╝\n";
+        echo "\n";
+        echo "🎉 Whisper is now ready to use!\n";
+        echo "\n";
+        echo "📚 Quick Start:\n";
+        echo "\n";
+        echo "   <?php\n";
+        echo "   require 'vendor/autoload.php';\n";
+        echo "\n";
+        echo "   use WhisperPHP\\Whisper;\n";
+        echo "\n";
+        echo "   \$whisper = new Whisper();\n";
+        echo "   \$text = \$whisper->audio('/path/to/audio.mp3')->toText();\n";
+        echo "   echo \$text;\n";
+        echo "\n";
+        echo "📖 Documentation: https://github.com/b7s/whisper-php\n";
+        echo "💡 See examples folder in the package directory\n";
+        echo "\n";
+        exit(0);
+    } else {
+        echo "\n";
+        echo "❌ Setup failed. Please check the error messages above.\n";
+        exit(1);
+    }
+} catch (\Exception $e) {
+    echo "\n";
+    echo "❌ Setup failed with error:\n";
+    echo "   {$e->getMessage()}\n";
+    echo "\n";
+    exit(1);
+}
+
+function showHelp(): void
+{
+    echo "\n";
+    echo "whisper-php Setup Command\n";
+    echo "\n";
+    echo "Usage:\n";
+    echo "  vendor/bin/whisper-setup [options]\n";
+    echo "\n";
+    echo "Options:\n";
+    echo "  --model=MODEL       Model to download (default: base)\n";
+    echo "                      Available: tiny, tiny.en, base, base.en, small, small.en,\n";
+    echo "                                 medium, medium.en, large\n";
+    echo "\n";
+    echo "  --language=LANG     Default language (default: auto)\n";
+    echo "                      Examples: en, pt, es, fr, de, etc.\n";
+    echo "\n";
+    echo "  --dir=PATH          Custom data directory\n";
+    echo "                      Default: ~/.local/share/whisper-php\n";
+    echo "\n";
+    echo "  --help              Show this help message\n";
+    echo "\n";
+    echo "Examples:\n";
+    echo "  vendor/bin/whisper-setup\n";
+    echo "  vendor/bin/whisper-setup --model=small.en\n";
+    echo "  vendor/bin/whisper-setup --model=large --language=pt\n";
+    echo "  vendor/bin/whisper-setup --dir=/custom/path\n";
+    echo "  vendor/bin/whisper-setup --help\n";
+    echo "\n";
+}
+
+function isInteractive(): bool
+{
+    return stream_isatty(STDIN) && stream_isatty(STDOUT);
+}

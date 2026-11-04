@@ -1,0 +1,17 @@
+# محافظت از فایل‌های حساس
+<FilesMatch "\.(php)$">
+  # اجازه‌ی اجرا — ولی فایل‌های زیر مستقیم قابل دسترسی نباشند
+</FilesMatch>
+
+<Files "config.php">
+  Require all denied
+</Files>
+
+<FilesMatch "^(Database|Auth|Csrf|Persons|.*Driver|ChannelInterface)\.php$">
+  Require all denied
+</FilesMatch>
+
+# پوشه‌های داخلی مستقیم سرو نشوند
+RedirectMatch 403 ^/.*/(core|modules|channels)/.*$
+RedirectMatch 403 ^/.*/(logs|config\.php)$
+RedirectMatch 403 ^/.*/(cli|data)/.*$

@@ -1,0 +1,78 @@
+{
+    "name": "b7s/whisper-php",
+    "description": "Transform audio into text with Whisper.cpp AI - directly in PHP",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bruno",
+            "email": "me@brunots.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "symfony/process": "^6.0|^7.0|^8.0"
+    },
+    "require-dev": {
+        "b7s/catraca": "^1.0",
+        "systemsdk/phpcpd": "^8.0",
+        "pestphp/pest": "^3.0",
+        "phpstan/phpstan": "^1.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "WhisperPHP\\": "src/"
+        },
+        "files": [
+            "src/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WhisperPHP\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/whisper-setup",
+        "bin/whisper-status"
+    ],
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "analyse": "phpstan analyse",
+        "whisper:setup": "php bin/whisper-setup",
+        "whisper:status": "php bin/whisper-status",
+        "post-install-cmd": [
+            "@whisper:info"
+        ],
+        "post-update-cmd": [
+            "@whisper:info"
+        ],
+        "whisper:info": [
+            "echo ''",
+            "echo '╔══════════════════════════════════════════════════════════════╗'",
+            "echo '║              whisper-php Installed Successfully              ║'",
+            "echo '╚══════════════════════════════════════════════════════════════╝'",
+            "echo ''",
+            "echo '📦 Next step: Run setup to download Whisper binaries and models'",
+            "echo ''",
+            "echo '   vendor/bin/whisper-setup'",
+            "echo ''",
+            "echo '💡 Or with custom options:'",
+            "echo '   vendor/bin/whisper-setup --model=small.en'",
+            "echo ''",
+            "echo '📊 Check installation status:'",
+            "echo '   vendor/bin/whisper-status'",
+            "echo ''",
+            "echo '📖 Documentation: https://github.com/b7s/whisper-php'",
+            "echo ''"
+        ]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

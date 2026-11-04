@@ -1,0 +1,41 @@
+<?php return array(
+    'root' => array(
+        'name' => 'jakojast/crm',
+        'pretty_version' => '1.0.0+no-version-set',
+        'version' => '1.0.0.0',
+        'reference' => null,
+        'type' => 'library',
+        'install_path' => __DIR__ . '/../../',
+        'aliases' => array(),
+        'dev' => true,
+    ),
+    'versions' => array(
+        'b7s/whisper-php' => array(
+            'pretty_version' => 'v1.2.52',
+            'version' => '1.2.52.0',
+            'reference' => '05c234cc2028e8d9c33aa170b9123a6e7096c4aa',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../b7s/whisper-php',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'jakojast/crm' => array(
+            'pretty_version' => '1.0.0+no-version-set',
+            'version' => '1.0.0.0',
+            'reference' => null,
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../../',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'symfony/process' => array(
+            'pretty_version' => 'v7.4.17',
+            'version' => '7.4.17.0',
+            'reference' => '058d17fc284cce14efb2385783b55014a461b176',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../symfony/process',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+    ),
+);

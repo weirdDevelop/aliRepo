@@ -1,0 +1,236 @@
+<?php
+
+declare(strict_types=1);
+
+namespace WhisperPHP;
+
+use Closure;
+
+final class TranscriptionOptions
+{
+    private bool $withTimestamps = false;
+    private bool $translate = false;
+    private ?string $outputFormat = null;
+    private ?string $language = null;
+    private ?string $initialPrompt = null;
+    private bool $useBeamSearch = false;
+    private int $beamSize = 5;
+    private float $temperature = 0.0;
+    private bool $enableVad = false;
+    private float $vadThreshold = 0.5;
+    private bool $detectSpeakerChanges = false;
+    /** @var (Closure(int): void)|null */
+    private ?Closure $progressCallback = null;
+    private bool $enableChunking = false;
+    private ?int $chunkSize = null;
+    private ?int $timeout = null;
+    private bool $analyzeVoiceToneEnabled = false;
+    private float $shoutThresholdDb = -10.0;
+    private float $softThresholdDb = -30.0;
+    private bool $timeoutExplicitlySet = false;
+
+    public function withTimestamps(bool $enabled = true): self
+    {
+        $this->withTimestamps = $enabled;
+        return $this;
+    }
+
+    public function toEnglish(bool $enabled = true): self
+    {
+        $this->translate = $enabled;
+        return $this;
+    }
+
+    public function outputFormat(string $format): self
+    {
+        $validFormats = ['srt', 'vtt', 'json', 'csv', 'txt'];
+        if (!\in_array($format, $validFormats, true)) {
+            throw new \InvalidArgumentException("Invalid format. Must be one of: " . implode(', ', $validFormats));
+        }
+        $this->outputFormat = $format;
+        return $this;
+    }
+
+    public function fromLanguage(string $language): self
+    {
+        $this->language = $language;
+        return $this;
+    }
+
+    public function context(string $prompt): self
+    {
+        $this->initialPrompt = $prompt;
+        return $this;
+    }
+
+    public function improveDecode(int $beamSize = 5): self
+    {
+        $this->useBeamSearch = true;
+        $this->beamSize = max(1, $beamSize > 10 ? 10 : $beamSize);
+        return $this;
+    }
+
+    public function temperature(float $temperature): self
+    {
+        $this->temperature = max(0.0, min(1.0, $temperature));
+        return $this;
+    }
+
+    public function filterNonSpeech(float $threshold = 0.5): self
+    {
+        $this->enableVad = true;
+        $this->vadThreshold = max(0.0, min(1.0, $threshold));
+        return $this;
+    }
+
+    public function detectSpeakers(bool $enabled = true): self
+    {
+        $this->detectSpeakerChanges = $enabled;
+        return $this;
+    }
+
+    /**
+     * @param Closure(int): void $callback
+     */
+    public function onProgress(Closure $callback): self
+    {
+        $this->progressCallback = $callback;
+        return $this;
+    }
+
+    public function hasTimestamps(): bool
+    {
+        return $this->withTimestamps;
+    }
+
+    public function shouldTranslate(): bool
+    {
+        return $this->translate;
+    }
+
+    public function getOutputFormat(): ?string
+    {
+        return $this->outputFormat;
+    }
+
+    public function getLanguage(): ?string
+    {
+        return $this->language;
+    }
+
+    public function getInitialPrompt(): ?string
+    {
+        return $this->initialPrompt;
+    }
+
+    public function shouldUseBeamSearch(): bool
+    {
+        return $this->useBeamSearch;
+    }
+
+    public function getBeamSize(): int
+    {
+        return $this->beamSize;
+    }
+
+    public function getTemperature(): float
+    {
+        return $this->temperature;
+    }
+
+    public function isVadEnabled(): bool
+    {
+        return $this->enableVad;
+    }
+
+    public function getVadThreshold(): float
+    {
+        return $this->vadThreshold;
+    }
+
+    public function shouldDetectSpeakers(): bool
+    {
+        return $this->detectSpeakerChanges;
+    }
+
+    /**
+     * @return (Closure(int): void)|null
+     */
+    public function getProgressCallback(): ?Closure
+    {
+        return $this->progressCallback;
+    }
+
+    /**
+     * Enable voice tone analysis (shouting / soft speaking detection).
+     *
+     * @param float $shoutThresholdDb Segments above this dBFS are classified as shouting (default: -10.0)
+     * @param float $softThresholdDb Segments below this dBFS are classified as soft/whisper (default: -30.0)
+     */
+    public function analyzeVoiceTone(float $shoutThresholdDb = -10.0, float $softThresholdDb = -30.0): self
+    {
+        $this->analyzeVoiceToneEnabled = true;
+        $this->shoutThresholdDb = $shoutThresholdDb;
+        $this->softThresholdDb = $softThresholdDb;
+        return $this;
+    }
+
+    /**
+     * Enable chunking for large files.
+     *
+     * @param int|null $sizeInBytes Chunk size in bytes (default: 20MB from Config)
+     */
+    public function chunk(?int $sizeInBytes = null): self
+    {
+        $this->enableChunking = true;
+        $this->chunkSize = $sizeInBytes;
+        return $this;
+    }
+
+    public function isChunkingEnabled(): bool
+    {
+        return $this->enableChunking;
+    }
+
+    public function getChunkSize(): ?int
+    {
+        return $this->chunkSize;
+    }
+
+    public function shouldAnalyzeVoiceTone(): bool
+    {
+        return $this->analyzeVoiceToneEnabled;
+    }
+
+    public function getShoutThresholdDb(): float
+    {
+        return $this->shoutThresholdDb;
+    }
+
+    public function getSoftThresholdDb(): float
+    {
+        return $this->softThresholdDb;
+    }
+
+    /**
+     * Set timeout for transcription process.
+     *
+     * @param int|null $seconds Timeout in seconds (null = no timeout)
+     */
+    public function timeout(?int $seconds): self
+    {
+        $this->timeout = $seconds;
+        $this->timeoutExplicitlySet = true;
+        return $this;
+    }
+
+    public function getTimeout(): ?int
+    {
+        return $this->timeout;
+    }
+
+    public function isTimeoutExplicitlySet(): bool
+    {
+        return $this->timeoutExplicitlySet;
+    }
+}

@@ -1,0 +1,8 @@
+# secrets & runtime data — never commit
+/config.php
+/logs/
+/crm/logs/
+/uploads/
+/crm/uploads/
+*.log
+*.cache
