@@ -2767,6 +2767,15 @@ switch ($api) {
             ['key'=>'template', 'title'=>'ساخت یک الگو', 'desc'=>'پیام آماده برای ارسال‌های بعدی', 'done'=>$hasTemplate, 'page'=>'templates'],
             ['key'=>'sent',     'title'=>'اولین ارسال', 'desc'=>'یک پیام به مشتریان بفرستید', 'done'=>$hasSent, 'page'=>'send'],
         ];
+        // 2.1.6 (R-06): cron بدون کلید از بیرون سرور دیگر اجرا نمی‌شود — اگر رد شد یا اجرا نمی‌شود، اینجا دیده شود
+        $cronLast = Database::one("SELECT v FROM eb_settings WHERE k='cron.last_run'")['v'] ?? null;
+        $cronDenied = json_decode((string)(Database::one("SELECT v FROM eb_settings WHERE k='cron.last_denied'")['v'] ?? ''), true);
+        $cronOk = $cronLast && (time() - strtotime($cronLast)) < 15 * 60;
+        $cronDesc = 'cron.php باید هر دقیقه اجرا شود (صف ارسال، زمان‌بندی، کمپین‌ها)';
+        if (!$cronOk && is_array($cronDenied) && (!$cronLast || strtotime($cronDenied['at'] ?? '') > strtotime($cronLast))) {
+            $cronDesc = 'اجرای cron در ' . ($cronDenied['at'] ?? '?') . ' رد شد؛ در تنظیمات ← سیستم کلید cron بسازید و آدرس cron هاست را با ?key=… به‌روز کنید';
+        }
+        $steps[] = ['key'=>'cron', 'title'=>'اجرای خودکار (cron)', 'desc'=>$cronDesc, 'done'=>(bool)$cronOk, 'page'=>'settings'];
         $doneCount = count(array_filter($steps, fn($s)=>$s['done']));
         out(['ok'=>true, 'steps'=>$steps, 'done'=>$doneCount, 'total'=>count($steps), 'complete'=>($doneCount===count($steps))]);
 

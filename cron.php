@@ -52,13 +52,21 @@ Personalize::setBaseUrl(app_base_url($config));
 // رفع یک خلأ قبلی: کمپین/زمان‌بندیِ عکس روی اینستاگرام از cron بدون این، آدرس عمومی نداشت
 InstagramDriver::setBaseUrl(app_base_url($config));
 
-// بررسی کلید امنیتی
+// بررسی کلید امنیتی (2.1.6 — R-06): بدون کلید فقط CLI یا درخواست از خود سرور؛ مقایسه‌ی constant-time
+require_once __DIR__ . '/core/CronGuard.php';
 $keyRow = Database::one("SELECT v FROM eb_settings WHERE k='cron.key'");
-$expected = $keyRow['v'] ?? null;
-if ($expected && ($_GET['key'] ?? '') !== $expected) {
+$cronAuth = CronGuard::check([$keyRow['v'] ?? null], isset($_GET['key']) ? (string)$_GET['key'] : null, $_SERVER, PHP_SAPI === 'cli');
+if (!CronGuard::allowed($cronAuth)) {
+    // ثبت برای هشدار داشبورد (چک‌لیست راه‌اندازی ← «اجرای خودکار») — بدون ذخیره‌ی کلید ارسالی
+    try {
+        Database::run("INSERT INTO eb_settings (k, v) VALUES ('cron.last_denied', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)",
+            [json_encode(['at' => date('Y-m-d H:i:s'), 'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''), 'reason' => $cronAuth])]);
+    } catch (Throwable $e) {}
+    error_log('[elanban cron] denied: ' . $cronAuth . ' from ' . ($_SERVER['REMOTE_ADDR'] ?? '?'));
     http_response_code(403);
     exit('forbidden');
 }
+try { Database::run("INSERT INTO eb_settings (k, v) VALUES ('cron.last_run', ?) ON DUPLICATE KEY UPDATE v = VALUES(v)", [date('Y-m-d H:i:s')]); } catch (Throwable $e) {}
 
 // ---- قفل سراسری اجرا (مورد ۶: ارسال دوباره) ----
 // cron هر دقیقه اجرا می‌شود ولی یک اجرا می‌تواند بیش از یک دقیقه طول بکشد

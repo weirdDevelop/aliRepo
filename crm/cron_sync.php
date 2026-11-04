@@ -16,16 +16,17 @@
 require_once __DIR__ . '/config.php';
 
 // بررسی cron_key (برای جلوگیری از دسترسی غیرمجاز)
+// 2.1.6 (R-06): کلید CRM یا همان کلید cron اعلان‌بان (تنظیمات ← سیستم) پذیرفته می‌شود؛ بدون هیچ کلیدی
+// فقط CLI یا درخواست از خود سرور اجرا می‌شود (قبلاً هر بازدیدکننده‌ای می‌توانست اجرایش کند).
+require_once EB_ROOT . '/core/CronGuard.php';
 $cronKey = Report::getSetting('cron_key');
-$providedKey = $_GET['key'] ?? '';
-
-// اگر کلید تنظیم شده، بررسی کن
-// (در محیط CLI نیازی به کلید نیست)
-if (!empty($cronKey) && php_sapi_name() !== 'cli') {
-    if ($providedKey !== $cronKey) {
-        http_response_code(403);
-        die('Forbidden');
-    }
+$ebCronKey = null;
+try { $ebCronKey = Database::getInstance()->fetchColumn("SELECT v FROM eb_settings WHERE k = 'cron.key'"); } catch (\Throwable $e) {}
+$cronAuth = CronGuard::check([$cronKey, $ebCronKey], isset($_GET['key']) ? (string)$_GET['key'] : null, $_SERVER, php_sapi_name() === 'cli');
+if (!CronGuard::allowed($cronAuth)) {
+    Logger::error('cron_sync: denied (' . $cronAuth . ')', ['remote_ip' => $_SERVER['REMOTE_ADDR'] ?? null]);
+    http_response_code(403);
+    die('Forbidden');
 }
 
 // تنظیم هدر JSON فقط در محیط web
