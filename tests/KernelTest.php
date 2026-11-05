@@ -86,3 +86,6 @@ test('kernel: panel RPC no longer echoes exception text to non-admins', function
     ok(strpos($s, "echo json_encode(['ok' => false, 'error' => 'خطای داخلی: ' . \$e->getMessage()]") === false, 'old leaking handler still present');
     ok(strpos($s, 'Auth::isRealAdmin()) ? \'خطای داخلی: \'') !== false, 'admin-only detail missing');
 });
+test('kernel: boundary checker flags SQL on another context\'s tables (comments ignored)', function () {
+    eq(['Identity/X.php → table eb_org_units (owned by Organization)'], eb_boundary_violations(EB_ROOT_DIR . '/tests/fixtures/boundary_tables'));
+});

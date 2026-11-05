@@ -40,6 +40,8 @@
 2.2.0: `GET /v2/platform/ping` (any user) · `GET /v2/platform/health` (admin) · `GET /v2/platform/jobs?status=` (admin) · `POST /v2/platform/jobs/{id}/retry` (admin, Idempotency-Key, audited). 
 2.3.0: `GET /v2/identity/me/permissions` (any user) · `GET /v2/identity/permissions` · `GET|POST /v2/identity/roles` · `GET|PATCH|DELETE /v2/identity/roles/{id}` · `GET /v2/identity/users` · `GET /v2/identity/users/{id}/effective` · `PUT /v2/identity/users/{id}/roles` (all `identity.role.manage`, admin-only). Route access is now `any|admin|<permission key>`.
 
+2.4.0: `GET /v2/org/units?date=&archived=` · `GET /v2/org/units/{id}` · `POST /v2/org/units` · `PATCH /v2/org/units/{id}` · `POST /v2/org/units/{id}/archive|restore` · `POST /v2/org/units/{id}/members` · `POST /v2/org/memberships/{id}/end` · `POST /v2/org/units/{id}/delegations` · `POST /v2/org/delegations/{id}/revoke` · `GET /v2/org/users/{id}/reporting-chain` · `GET /v2/org/me/reporting-chain` · `GET /v2/org/import/preview` · `POST /v2/org/import` · `PUT /v2/identity/users/{id}/scoped-roles`. Reads open to any user; writes authorised per unit with `Auth::canIn` (`org.unit.manage`, `org.member.manage`).
+
 ## 6. Related
 
 `error-contract.md` · `webhooks.md` · `connector-contracts.md`

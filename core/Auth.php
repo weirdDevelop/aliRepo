@@ -293,6 +293,40 @@ class Auth
         return Permissions::allows(self::keys(), $key);
     }
 
+    private static ?array $scopedCache = null;
+    private static ?array $unitParents = null;
+
+    /**
+     * 2.4.0: کلید مجوز برای داده‌ای که متعلق به یک واحد سازمانی است (نقش‌های دامنه‌دار: یک واحد، یا واحد و زیرمجموعه‌ها).
+     * $unitId = null یعنی بدون واحد → همان can(). صفحه‌ها هرگز با نقش دامنه‌دار باز نمی‌شوند.
+     */
+    public static function canIn(string $key, ?int $unitId): bool
+    {
+        if ($unitId === null || self::can($key)) return self::can($key);
+        $uid = (int)(self::id() ?? 0);
+        if ($uid <= 0 || !class_exists('Migrations') || !Migrations::isApplied('0004_organization')) return false;
+        if (self::$scopedCache === null || (self::$scopedCache['uid'] ?? 0) !== $uid) {
+            $rows = [];
+            try { $rows = Database::all(Permissions::SCOPED_KEYS_SQL, [$uid]); } catch (Throwable $e) { error_log('[auth] scoped keys: ' . $e->getMessage()); }
+            self::$scopedCache = ['uid' => $uid, 'rows' => $rows];
+        }
+        if (!self::$scopedCache['rows']) return false;
+        if (self::$unitParents === null) {
+            self::$unitParents = [];
+            try { foreach (Database::all("SELECT id, parent_id FROM eb_org_units") as $r) self::$unitParents[(int)$r['id']] = $r['parent_id'] === null ? null : (int)$r['parent_id']; }
+            catch (Throwable $e) {}
+        }
+        $anc = []; $seen = [$unitId => true]; $p = self::$unitParents[$unitId] ?? null;
+        while ($p !== null && !isset($seen[$p])) { $anc[] = $p; $seen[$p] = true; $p = self::$unitParents[$p] ?? null; }
+        return Permissions::allowsInUnit(self::keys(), self::$scopedCache['rows'], $key, $unitId, $anc);
+    }
+
+    /** Test/long-running helper: forget per-request permission caches. */
+    public static function forgetPermissionCache(): void
+    {
+        self::$keysCache = null; self::$scopedCache = null; self::$unitParents = null;
+    }
+
     private static ?array $keysCache = null;
     private static string $keysSig = '';
 

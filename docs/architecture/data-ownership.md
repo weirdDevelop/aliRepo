@@ -59,3 +59,7 @@ Today there are four trees with different meanings:
 ## 5. Data-quality items carried forward (need staging data, B-02)
 
 Duplicate persons by canonical phone · CRM rows with unparseable phones · orphaned `eb_identities` (only one FK exists) · CRM `assignee` names with no matching user · Jalali date strings that fail to parse. Each gets a report-only script before any fix.
+
+## 6. Status — 2.4.0 (2026-11-05)
+
+Organization tables exist (`eb_org_units`, `eb_org_memberships`, `eb_org_delegations`, `eb_org_changes`). The four legacy hierarchies are **not** retired: `eb_roles` still drives page permissions, `eb_teams` still drives inbox routing, CRM `staff.unit` still drives CRM screens. The import copies them into org units on demand (preview first, idempotent, nothing merged or deleted). Retiring them is a later, approved step once routing and permissions read org units.

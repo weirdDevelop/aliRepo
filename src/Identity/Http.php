@@ -22,6 +22,13 @@ final class Http
         return \Rest::envelope(200, Api::setUserRoles((int)$p['id'], $b['role_ids'], (int)\Auth::id()));
     }
 
+    public static function setUserScopedGrants(array $req, array $p): array
+    {
+        $b = self::body($req);
+        if (!is_array($b['grants'] ?? null)) throw new \RestError(400, 'validation_error', 'grants باید فهرست باشد', 'grants');
+        return \Rest::envelope(200, Api::setUserScopedGrants((int)$p['id'], $b['grants'], (int)\Auth::id()));
+    }
+
     /** The caller's own effective permissions (any logged-in user). */
     public static function me(array $req, array $p): array
     {

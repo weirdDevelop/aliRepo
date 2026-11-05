@@ -7,7 +7,7 @@ const isAdmin = () => !!(D.me && D.me.is_admin);
 const SECS = [
   {h:'حساب و ظاهر'}, ['appearance', 'ظاهر و تم', 'palette'], ['me', 'پروفایل و رمز', 'user-circle'],
   {h:'کسب‌وکار', admin:1}, ['brand', 'برند و شرکت', 'paint-brush', 1], ['channels', 'اتصال کانال‌ها', 'plugs-connected', 1],
-  {h:'تیم', admin:1}, ['operators', 'اپراتورها و دسترسی', 'user-gear', 1], ['roles', 'چارت سازمانی و نقش‌ها', 'tree-structure', 1], ['access', 'نقش‌های دسترسی', 'key', 1], ['sites', 'سایت‌ها (چندسایته)', 'globe-hemisphere-west', 1], ['routing', 'تیم‌ها، SLA و ساعت کاری', 'arrows-split', 1], ['inbox', 'صندوق ورودی و پیگیری', 'tray', 1],
+  {h:'تیم', admin:1}, ['operators', 'اپراتورها و دسترسی', 'user-gear', 1], ['roles', 'چارت سازمانی و نقش‌ها', 'tree-structure', 1], ['access', 'نقش‌های دسترسی', 'key', 1], ['org', 'واحدهای سازمانی', 'stack', 1], ['sites', 'سایت‌ها (چندسایته)', 'globe-hemisphere-west', 1], ['routing', 'تیم‌ها، SLA و ساعت کاری', 'arrows-split', 1], ['inbox', 'صندوق ورودی و پیگیری', 'tray', 1],
   ...((window.EB_BOOT || {}).crm && EB_BOOT.crm.present ? [{h:'CRM', admin:1}, ['crm', 'CRM و انتقال داده', 'database', 1], ...(EB_BOOT.crm.ready ? [['crmset', 'تلفنچی، سایت و CRM', 'phone-call', 1]] : [])] : []),
   {h:'سیستم', admin:1}, ['system', 'سیستم و نگهداری', 'hard-drives', 1], ['proxy', 'پروکسی و دسترسی', 'shield-check', 1], 
 ];
@@ -146,7 +146,13 @@ const LOADERS = {
   access: async () => {   // 2.3.0
     const [c, r, u] = await Promise.all([L().v2('GET', '/v2/identity/permissions'), L().v2('GET', '/v2/identity/roles'), L().v2('GET', '/v2/identity/users')]);
     for (const x of [c, r, u]) if (!x.ok) throw new Error(x.error);
-    S.acc = {catalog:c.data, roles:r.data, users:u.data};
+    S.acc = {catalog:c.data, roles:r.data, users:u.data, units:[]};
+    const t = await L().v2('GET', '/v2/org/units'); if (t.ok) S.acc.units = t.data.units;   // 2.4.0
+  },
+  org: async () => {   // 2.4.0
+    const [t, u] = await Promise.all([L().v2('GET', '/v2/org/units?archived=1'), L().v2('GET', '/v2/identity/users')]);
+    if (!t.ok) throw new Error(t.error); if (!u.ok) throw new Error(u.error);
+    S.org = {units:t.data.units, users:u.data}; EB.todayIso = t.data.date;
   },
   sites: async () => { const r = await L().api('sites_list'); if (!r.ok) throw new Error(r.error); S.sites = r.sites; S.siteCur = r.current; },
   inbox: async () => { const r = await L().api('desk_inbox_cfg'); if (!r.ok) throw new Error(r.error); S.icfg = JSON.parse(JSON.stringify({visibility:r.visibility, prio_rules:r.prio_rules, csat:r.csat, followups:r.followups.map(f => Object.assign(f, {_saved:true}))})); S.icfgStats = r.followup_stats || {}; },
@@ -155,7 +161,7 @@ const LOADERS = {
   proxy: async () => { const r = await L().api('v4_proxy_get'); if (!r.ok) throw new Error(r.error); S.px = r; S.pxList = JSON.parse(JSON.stringify(r.proxies)); S.pxRoutes = JSON.parse(JSON.stringify(r.routes || {})); },
   
 };
-const VIEWS = {appearance, me, brand, channels, operators, roles, access, sites, routing, inbox:inboxCfg, system, proxy,
+const VIEWS = {appearance, me, brand, channels, operators, roles, access, org, sites, routing, inbox:inboxCfg, system, proxy,
   crm: () => `<div id="crmSetBox">${EB.crmSet ? EB.crmSet.html() : ''}</div>`,
   crmset: () => `${head('تلفنچی، سایت و CRM', 'اتصال تلفنچی، دیتابیس سایت جاکجاست، تبدیل صدا به متن، داخلی‌ها، مراجع سرنخ و تنظیمات مالی CRM.')}<div class="card" style="overflow:hidden;height:calc(100vh - 210px);min-height:520px;margin-top:12px"><div id="crmFrame" style="height:100%"></div></div>`,
 };
@@ -200,11 +206,15 @@ A['acc-del'] = el => { const r = S.acc.roles.find(x => x.id === +el.dataset.id);
 A['acc-user'] = el => {
   const u = S.acc.users.find(x => x.id === +el.dataset.id); if (!u) return;
   const dw = drawer({title:'نقش‌های ' + E(u.username), sub:'نقش‌ها به دسترسی فعلی این کاربر اضافه می‌شوند', size:'md',
-    body:`<div class="stack s12" style="padding:18px">${S.acc.roles.length ? S.acc.roles.map(r => `<label class="row small"><input type="checkbox" class="cb" name="accUR" value="${r.id}" ${u.role_ids.includes(r.id) ? 'checked' : ''}><b>${E(r.name)}</b><span class="xs muted">${fa(r.keys.length)} مجوز</span></label>`).join('') : empty('key', 'نقشی وجود ندارد', 'اول یک نقش بسازید.')}</div>`,
+    body:`<div class="stack s12" style="padding:18px"><h4 style="margin:0">نقش در همه‌ی سازمان</h4>${S.acc.roles.length ? S.acc.roles.map(r => `<label class="row small"><input type="checkbox" class="cb" name="accUR" value="${r.id}" ${u.role_ids.includes(r.id) ? 'checked' : ''}><b>${E(r.name)}</b><span class="xs muted">${fa(r.keys.length)} مجوز</span></label>`).join('') : empty('key', 'نقشی وجود ندارد', 'اول یک نقش بسازید.')}<div id="accSGBox">${accScopedHtml(S.accScopedUser = Object.assign({}, u, {scoped:(u.scoped || []).slice()}))}</div></div>`,
     foot:'<button class="btn" data-close>انصراف</button><button class="btn btn-p" data-ok>ذخیره</button>'});
   dw.el.querySelector('[data-ok]').onclick = async e => {
     const res = await run(e.currentTarget, () => L().v2('PUT', '/v2/identity/users/' + u.id + '/roles', {role_ids:$$('input[name=accUR]:checked').map(c => +c.value)}));
     if (!res.ok) return toast(res.error, 'err');
+    if (S.acc.units && S.acc.units.length) {   // 2.4.0
+      const r2 = await L().v2('PUT', '/v2/identity/users/' + u.id + '/scoped-roles', {grants:S.accScopedUser.scoped.map(g => ({role_id:g.role_id, scope_type:g.scope_type, unit_id:g.unit_id}))});
+      if (!r2.ok) return toast(r2.error, 'err');
+    }
     dw.close(); toast('نقش‌های کاربر ذخیره شد'); body();
   };
 };
@@ -219,6 +229,91 @@ A['acc-eff'] = async el => {
     <div class="card flat"><div class="card-b xs">${d.keys.map(k => `<div class="row" style="justify-content:space-between"><span class="ltr">${E(k)}</span><span class="muted">${E(src(k))}</span></div>`).join('')}</div></div></div>`,
     foot:'<button class="btn" data-close>بستن</button>'});
 };
+
+/* ===== 2.4.0: واحدهای سازمانی (مدیریت) ===== */
+const orgDesc = (units, id) => { const kids = {}; units.forEach(u => { if (u.parent_id) (kids[u.parent_id] = kids[u.parent_id] || []).push(u.id); }); const out = new Set(); const st = [...(kids[id] || [])]; while (st.length) { const c = st.pop(); if (out.has(c)) continue; out.add(c); (kids[c] || []).forEach(k => st.push(k)); } return out; };
+const orgUserOpts = sel => S.org.users.filter(u => +u.is_active).map(u => `<option value="${u.id}" ${+sel === u.id ? 'selected' : ''}>${E(u.username)}</option>`).join('');
+const orgTypeOpts = sel => Object.entries(EB.orgTypes).map(([k, v]) => `<option value="${k}" ${sel === k ? 'selected' : ''}>${v}</option>`).join('');
+const orgParentOpts = (sel, exclude) => `<option value="">— بدون والد (ریشه) —</option>` + S.org.units.filter(u => u.status === 'active' && !exclude.has(u.id)).map(u => `<option value="${u.id}" ${+sel === u.id ? 'selected' : ''}>${E(u.name)}</option>`).join('');
+const dpick = (id, iso, ph) => `<input class="inp" id="${id}" data-iso="${E(iso || '')}" value="${E(iso ? EB.jd(iso) : '')}" placeholder="${ph || ''}" data-act="org-dpick" readonly>`;
+const isoOf = id => { const el = document.getElementById(id); return el && el.dataset.iso ? el.dataset.iso : null; };
+A['org-dpick'] = el => JD.picker(el, iso => { el.dataset.iso = iso; });
+
+function org() {
+  const active = S.org.units.filter(u => u.status === 'active').length, arch = S.org.units.length - active;
+  return `${head('واحدهای سازمانی', `${fa(active)} واحد فعال${arch ? '، ' + fa(arch) + ' بایگانی' : ''}. عضویت‌ها تاریخ شروع و پایان دارند و سابقه حذف نمی‌شود. «چارت سازمانی و نقش‌ها» و تیم‌های صندوق ورودی مثل قبل کار می‌کنند.`,
+    `<button class="btn" data-act="org-import">${ic('download-simple')}ورود از ساختار فعلی</button> <button class="btn btn-p" data-act="org-new">${ic('plus')}واحد جدید</button>`)}
+  <div style="margin-top:12px">${EB.orgTree(S.org.units, {manage:true, emptyText:'با «واحد جدید» شروع کنید، یا با «ورود از ساختار فعلی» نقش‌های چارت، تیم‌ها و واحدهای پرسنل CRM را (بعد از دیدن گزارش) وارد کنید.'})}</div>`;
+}
+A['org-new'] = () => {
+  const dw = drawer({title:'واحد جدید', size:'md', body:`<div class="stack s20" style="padding:18px">${field('نام', '<input class="inp" id="ouName" maxlength="120">')}${field('نوع', `<select class="inp" id="ouType">${orgTypeOpts('department')}</select>`)}${field('زیرمجموعه‌ی', `<select class="inp" id="ouParent">${orgParentOpts(null, new Set())}</select>`)}</div>`,
+    foot:'<button class="btn" data-close>انصراف</button><button class="btn btn-p" data-ok>ساخت</button>'});
+  dw.el.querySelector('[data-ok]').onclick = async e => {
+    const res = await run(e.currentTarget, () => L().v2('POST', '/v2/org/units', {name:val('ouName'), type:val('ouType'), parent_id:val('ouParent') || null}));
+    if (!res.ok) return toast(res.error, 'err');
+    dw.close(); toast('واحد ساخته شد'); body();
+  };
+};
+A['org-open'] = async el => {
+  const id = +el.dataset.id;
+  const r = await L().v2('GET', '/v2/org/units/' + id); if (!r.ok) return toast(r.error, 'err');
+  const u = r.data, excl = orgDesc(S.org.units, id); excl.add(id);
+  const open = u.memberships.filter(m => !m.valid_to || m.valid_to >= EB.todayIso), past = u.memberships.filter(m => m.valid_to && m.valid_to < EB.todayIso);
+  const mrow = m => `<tr><td>${E(m.user.name)}</td><td>${E(EB.orgRoles[m.role] || m.role)}${m.is_primary ? ' ' + pill('اصلی', 'info') : ''}</td><td class="small">${E(EB.jd(m.valid_from))} تا ${m.valid_to ? E(EB.jd(m.valid_to)) : 'اکنون'}</td>
+    <td>${!m.valid_to || m.valid_to >= EB.todayIso ? `<button class="btn btn-sm btn-g" data-act="org-end" data-id="${m.id}" data-unit="${id}">${ic('stop-circle')}پایان</button>` : ''}</td></tr>`;
+  const dw = drawer({title:E(u.name), sub:(EB.orgTypes[u.type] || u.type) + (u.status === 'archived' ? ' · بایگانی' : ''), size:'lg', body:`<div class="stack s20" style="padding:18px">
+    <div class="card flat"><div class="card-b stack s12"><div class="fg">${field('نام', `<input class="inp" id="oeName" maxlength="120" value="${E(u.name)}">`)}${field('نوع', `<select class="inp" id="oeType">${orgTypeOpts(u.type)}</select>`)}${field('زیرمجموعه‌ی', `<select class="inp" id="oeParent">${orgParentOpts(u.parent_id, excl)}</select>`, 'خود این واحد و زیرمجموعه‌هایش در فهرست نیستند (جلوگیری از چرخه).')}</div>
+      <div class="row"><button class="btn btn-p btn-sm" data-act="org-save" data-id="${id}">${ic('check')}ذخیره</button>${u.status === 'active' ? `<button class="btn btn-sm btn-g" data-act="org-archive" data-id="${id}">${ic('prohibit')}بایگانی</button>` : `<button class="btn btn-sm" data-act="org-restore" data-id="${id}">${ic('arrow-counter-clockwise')}بازگردانی</button>`}</div></div></div>
+    <div><h4 style="margin:0 0 8px">اعضا</h4><div class="tbl-wrap"><table class="tbl"><thead><tr><th>نام</th><th>نقش در واحد</th><th>دوره</th><th></th></tr></thead><tbody>${open.map(mrow).join('') || '<tr><td colspan="4" class="muted small">عضو فعالی ندارد</td></tr>'}</tbody></table></div>
+      <div class="row wrap" style="margin-top:10px;gap:8px;align-items:flex-end"><select class="inp" id="omUser" style="max-width:180px">${orgUserOpts(null)}</select><select class="inp" id="omRole" style="max-width:120px">${Object.entries(EB.orgRoles).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>${dpick('omFrom', EB.todayIso, 'از')}${dpick('omTo', '', 'تا (اختیاری)')}<label class="row small"><input type="checkbox" class="cb" id="omPrimary">واحد اصلی</label><button class="btn btn-sm btn-p" data-act="org-add" data-id="${id}">${ic('user-plus')}افزودن</button></div>
+      ${past.length ? `<details style="margin-top:10px"><summary class="small">سابقه (${fa(past.length)})</summary><div class="tbl-wrap"><table class="tbl"><tbody>${past.map(mrow).join('')}</tbody></table></div></details>` : ''}</div>
+    <div><h4 style="margin:0 0 8px">جانشین مدیر</h4>${u.delegations.filter(d => !d.revoked).map(d => `<div class="row small" style="gap:8px">${E(d.to ? d.to.name : '?')} به‌جای ${E(d.from ? d.from.name : '?')} · ${E(EB.jd(d.valid_from))} تا ${E(EB.jd(d.valid_to))}${d.reason ? ' · ' + E(d.reason) : ''}<button class="btn btn-sm btn-g" data-act="org-revoke" data-id="${d.id}" data-unit="${id}">لغو</button></div>`).join('') || '<div class="muted small">ندارد</div>'}
+      <div class="row wrap" style="margin-top:8px;gap:8px"><select class="inp" id="odUser" style="max-width:180px">${orgUserOpts(null)}</select>${dpick('odFrom', EB.todayIso, 'از')}${dpick('odTo', '', 'تا')}<input class="inp" id="odReason" placeholder="دلیل (مثلاً مرخصی)" style="max-width:180px"><button class="btn btn-sm" data-act="org-deleg" data-id="${id}">${ic('user-switch')}تعیین جانشین</button></div></div>
+    <details><summary class="small">تاریخچه‌ی تغییرات واحد (${fa(u.changes.length)})</summary><div class="xs stack s4" style="margin-top:6px">${u.changes.map(c => `<div>${E(c.at)} · ${E(c.change_type)} ${c.old_value ? E(c.old_value) + ' → ' : ''}${E(c.new_value || '')}</div>`).join('')}</div></details>
+  </div>`, foot:'<button class="btn" data-close>بستن</button>'});
+  S.orgDw = dw;
+};
+async function orgDo(fn, okMsg, unitId) {
+  const res = await fn(); if (!res.ok) { toast(res.error, 'err'); return false; }
+  toast(okMsg); if (S.orgDw) S.orgDw.close(); await body(); if (unitId) A['org-open']({dataset:{id:unitId}}); return true;
+}
+A['org-save'] = el => orgDo(() => L().v2('PATCH', '/v2/org/units/' + el.dataset.id, {name:val('oeName'), type:val('oeType'), parent_id:val('oeParent') || null}), 'ذخیره شد', el.dataset.id);
+A['org-archive'] = el => orgDo(() => L().v2('POST', '/v2/org/units/' + el.dataset.id + '/archive', {}), 'بایگانی شد', el.dataset.id);
+A['org-restore'] = el => orgDo(() => L().v2('POST', '/v2/org/units/' + el.dataset.id + '/restore', {}), 'بازگردانی شد', el.dataset.id);
+A['org-add'] = el => orgDo(() => L().v2('POST', '/v2/org/units/' + el.dataset.id + '/members', {user_id:+val('omUser'), role:val('omRole'), valid_from:isoOf('omFrom'), valid_to:isoOf('omTo'), is_primary:val('omPrimary')}), 'عضو اضافه شد', el.dataset.id);
+A['org-end'] = el => confirm({title:'پایان عضویت', text:'آخرین روز عضویت امروز ثبت می‌شود. سابقه باقی می‌ماند.', ok:'پایان عضویت', onOk:() => orgDo(() => L().v2('POST', '/v2/org/memberships/' + el.dataset.id + '/end', {}), 'عضویت پایان یافت', el.dataset.unit)});
+A['org-deleg'] = el => orgDo(() => L().v2('POST', '/v2/org/units/' + el.dataset.id + '/delegations', {to_user_id:+val('odUser'), valid_from:isoOf('odFrom'), valid_to:isoOf('odTo'), reason:val('odReason')}), 'جانشین تعیین شد', el.dataset.id);
+A['org-revoke'] = el => orgDo(() => L().v2('POST', '/v2/org/delegations/' + el.dataset.id + '/revoke', {}), 'جانشینی لغو شد', el.dataset.unit);
+A['org-import'] = async () => {
+  const r = await L().v2('GET', '/v2/org/import/preview'); if (!r.ok) return toast(r.error, 'err');
+  const p = r.data, NAMES = {roles:'نقش‌های چارت سازمانی', teams:'تیم‌های صندوق ورودی', crm:'واحدهای پرسنل CRM'};
+  const dw = drawer({title:'ورود از ساختار فعلی', sub:'اول گزارش را ببینید؛ چیزی حذف یا ادغام نمی‌شود و ساختارهای قبلی مثل قبل کار می‌کنند', size:'lg', body:`<div class="stack s20" style="padding:18px">
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>منبع</th><th>واحد</th><th>تازه</th><th>عضویت</th></tr></thead><tbody>${Object.entries(p.summary).map(([k, s]) => `<tr><td><input type="checkbox" class="cb" name="oiSrc" value="${k}" ${s.new_units ? 'checked' : ''}></td><td>${NAMES[k]}</td><td>${fa(s.units)}</td><td>${fa(s.new_units)}</td><td>${fa(s.members)}</td></tr>`).join('')}</tbody></table></div>
+    ${p.possible_duplicates.length ? `<div class="callout">${ic('warning')}<span>نام‌های تکراری بین منابع (ادغام خودکار نمی‌شوند؛ بعد از ورود، یکی را بایگانی یا جابه‌جا کنید): ${p.possible_duplicates.map(d => '<b>' + E(d.name) + '</b>').join('، ')}</span></div>` : ''}
+    ${p.issues.length ? `<details open><summary class="small">نکته‌ها (${fa(p.issues.length)})</summary><div class="xs stack s4" style="margin-top:6px">${p.issues.map(i => `<div>${E(NAMES[i.source] || i.source)}: ${E(i.message)}</div>`).join('')}</div></details>` : ''}
+    ${p.unmatched_staff.length ? `<details><summary class="small">پرسنل CRM که عضو نمی‌شوند (${fa(p.unmatched_staff.length)})</summary><div class="xs stack s4" style="margin-top:6px">${p.unmatched_staff.map(s => `<div>${E(s.staff_code)} · ${E(s.name)}${s.unit ? ' · ' + E(s.unit) : ''} — ${E(s.reason)}</div>`).join('')}</div></details>` : ''}
+    <details><summary class="small">فهرست واحدها (${fa(p.units.length)})</summary><div class="xs stack s4" style="margin-top:6px">${p.units.map(u => `<div>${'　'.repeat(u.depth || 0)}${E(u.name)} <span class="muted">(${NAMES[u.source]}، ${fa(u.members.length)} نفر${u.already_imported ? '، قبلاً وارد شده' : ''})</span></div>`).join('')}</div></details>
+  </div>`, foot:'<button class="btn" data-close>انصراف</button><button class="btn btn-p" data-ok>ورود منابع انتخاب‌شده</button>'});
+  dw.el.querySelector('[data-ok]').onclick = async e => {
+    const sources = $$('input[name=oiSrc]:checked').map(c => c.value); if (!sources.length) return toast('حداقل یک منبع انتخاب کنید', 'err');
+    const res = await run(e.currentTarget, () => L().v2('POST', '/v2/org/import', {sources}));
+    if (!res.ok) return toast(res.error, 'err');
+    dw.close(); toast(`${fa(res.data.units_created)} واحد و ${fa(res.data.memberships_created)} عضویت وارد شد`); body();
+  };
+};
+
+/* 2.4.0: نقش در یک واحد (دامنه‌دار) — در کشوی «نقش‌ها»ی هر کاربر */
+function accScopedHtml(u) {
+  const unitName = id => ((S.acc.units || []).find(x => x.id === id) || {}).name || ('#' + id);
+  const roleName = id => (S.acc.roles.find(x => x.id === id) || {}).name || ('#' + id);
+  const rows = (u.scoped || []).map((g, i) => `<div class="row small" style="gap:8px" data-sg="${i}">${pill(E(roleName(g.role_id)), 'info')} در ${E(unitName(g.unit_id))}${g.scope_type === 'org_unit_tree' ? ' و زیرمجموعه‌ها' : ''}<button class="btn btn-sm btn-g" data-act="acc-sg-del" data-i="${i}">${ic('x')}</button></div>`).join('');
+  return `<h4 style="margin:14px 0 6px">نقش در یک واحد</h4><p class="xs muted">برای داده‌هایی که به واحد تعلق دارند (مثلاً مدیریت اعضای همان دپارتمان). بخش‌های پنل (صفحه‌ها) با این نوع نقش باز نمی‌شوند.</p>
+    <div class="stack s4" id="accSG">${rows || '<span class="muted small">ندارد</span>'}</div>
+    ${(S.acc.units || []).length ? `<div class="row wrap" style="gap:8px;margin-top:8px"><select class="inp" id="sgRole" style="max-width:160px">${S.acc.roles.map(r => `<option value="${r.id}">${E(r.name)}</option>`).join('')}</select><select class="inp" id="sgUnit" style="max-width:180px">${S.acc.units.map(x => `<option value="${x.id}">${E(x.name)}</option>`).join('')}</select><label class="row small"><input type="checkbox" class="cb" id="sgTree" checked>با زیرمجموعه‌ها</label><button class="btn btn-sm" data-act="acc-sg-add">${ic('plus')}افزودن</button></div>` : '<p class="xs muted">هنوز واحد سازمانی تعریف نشده.</p>'}`;
+}
+
+A['acc-sg-add'] = () => { const su = S.accScopedUser; su.scoped.push({role_id:+val('sgRole'), unit_id:+val('sgUnit'), scope_type:val('sgTree') ? 'org_unit_tree' : 'org_unit'}); $('#accSGBox').innerHTML = accScopedHtml(su); };
+A['acc-sg-del'] = el => { const su = S.accScopedUser; su.scoped.splice(+el.dataset.i, 1); $('#accSGBox').innerHTML = accScopedHtml(su); };
 
 async function body() {
   const seq = ++renderSeq; const box = $('#setBody'); if (!box) return;

@@ -86,6 +86,29 @@ final class Permissions
         return false;
     }
 
+    /** Scoped grants of a user (2.4.0): role keys granted at one unit (org_unit) or a unit and its sub-units (org_unit_tree). */
+    const SCOPED_KEYS_SQL = "SELECT g.scope_type, g.scope_id, k.perm_key FROM eb_perm_grants g JOIN eb_perm_role_keys k ON k.role_id = g.role_id
+                             WHERE g.user_id = ? AND g.scope_type IN ('org_unit', 'org_unit_tree') AND (g.expires_at IS NULL OR g.expires_at > UTC_TIMESTAMP())";
+
+    /**
+     * Is $key allowed for a subject that belongs to org unit $unitId?
+     * @param string[] $tenantKeys  effective tenant-wide keys (always apply)
+     * @param array<int, array{scope_type:string, scope_id:int|string, perm_key:string}> $scoped
+     * @param int[] $ancestors      ancestors of $unitId (nearest first)
+     * Page keys are never opened by unit-scoped grants: pages are tenant-wide.
+     */
+    public static function allowsInUnit(array $tenantKeys, array $scoped, string $key, int $unitId, array $ancestors): bool
+    {
+        if (self::allows($tenantKeys, $key)) return true;
+        if (preg_match('/\.page\.view$/', $key)) return false;
+        foreach ($scoped as $g) {
+            $sid = (int)$g['scope_id'];
+            $hit = $sid === $unitId || ($g['scope_type'] === 'org_unit_tree' && in_array($sid, $ancestors, true));
+            if ($hit && self::allows([(string)$g['perm_key']], $key)) return true;
+        }
+        return false;
+    }
+
     public static function allowsPage(array $keys, string $page): bool
     {
         return self::allows($keys, self::pageKey($page));

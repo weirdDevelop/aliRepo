@@ -37,8 +37,17 @@ final class Api
             if (!preg_match('/^([a-z0-9_]+)\.page\.view$/', $e['key'], $m)) continue;
             $pages[$m[1]] = \Permissions::allowsPage($keys, $m[1]);
         }
+        $scoped = [];
+        if (self::orgReady()) {
+            $rows = \Database::all("SELECT g.role_id, r.name role_name, g.scope_type, g.scope_id FROM eb_perm_grants g JOIN eb_perm_roles r ON r.id = g.role_id
+                                     WHERE g.user_id = ? AND g.scope_type IN ('org_unit', 'org_unit_tree') ORDER BY g.scope_id", [$uid]);
+            $unitNames = \Eb\Organization\Api::unitNames(array_column($rows, 'scope_id'));
+            foreach ($rows as $g) {
+                $scoped[] = ['role_id' => (int)$g['role_id'], 'role' => $g['role_name'], 'scope_type' => $g['scope_type'], 'unit_id' => (int)$g['scope_id'], 'unit' => $unitNames[(int)$g['scope_id']] ?? null];
+            }
+        }
         return ['user' => ['id' => (int)$u['id'], 'username' => $u['username'], 'role' => $u['role'], 'org_role' => $orgPages !== null],
-                'keys' => $keys, 'sources' => $sources, 'pages' => $pages,
+                'keys' => $keys, 'sources' => $sources, 'pages' => $pages, 'scoped' => $scoped,
                 'can_delete_customers' => \Permissions::allows($keys, 'customer.person.delete')];
     }
 
@@ -131,10 +140,50 @@ final class Api
     public static function users(): array
     {
         $rows = \Database::all("SELECT id, username, role, is_active FROM eb_users ORDER BY username");
-        $g = [];
-        foreach (\Database::all("SELECT user_id, role_id FROM eb_perm_grants WHERE scope_type = 'tenant'") as $r) $g[(int)$r['user_id']][] = (int)$r['role_id'];
-        foreach ($rows as &$r) { $r['id'] = (int)$r['id']; $r['is_active'] = (int)$r['is_active']; $r['role_ids'] = $g[$r['id']] ?? []; }
+        $g = []; $sc = [];
+        foreach (\Database::all("SELECT user_id, role_id, scope_type, scope_id FROM eb_perm_grants") as $r) {
+            if ($r['scope_type'] === 'tenant') $g[(int)$r['user_id']][] = (int)$r['role_id'];
+            else $sc[(int)$r['user_id']][] = ['role_id' => (int)$r['role_id'], 'scope_type' => $r['scope_type'], 'unit_id' => (int)$r['scope_id']];
+        }
+        foreach ($rows as &$r) { $r['id'] = (int)$r['id']; $r['is_active'] = (int)$r['is_active']; $r['role_ids'] = $g[$r['id']] ?? []; $r['scoped'] = $sc[$r['id']] ?? []; }
         return $rows;
+    }
+
+    private static function orgReady(): bool
+    {
+        return class_exists('Migrations') && \Migrations::isApplied('0004_organization');
+    }
+
+    /**
+     * 2.4.0: replace a user's unit-scoped grants. Each: {role_id, scope_type: org_unit|org_unit_tree, unit_id}.
+     * Page permissions inside such roles have no effect (pages are tenant-wide); data permissions apply at that unit.
+     */
+    public static function setUserScopedGrants(int $uid, array $grants, int $actor): array
+    {
+        if ($uid === $actor) throw new \RestError(422, 'rule_violation', 'هیچ‌کس نمی‌تواند به خودش نقش بدهد یا از خودش بگیرد (تفکیک وظایف)');
+        if (!self::orgReady()) throw new \RestError(503, 'unavailable', 'چارت سازمانی هنوز ساخته نشده است (به‌روزرسانی دیتابیس)');
+        if (!\Database::one("SELECT id FROM eb_users WHERE id = ?", [$uid])) throw new \RestError(404, 'not_found', 'کاربر پیدا نشد');
+        $clean = [];
+        foreach ($grants as $i => $g) {
+            if (!is_array($g)) throw new \RestError(400, 'validation_error', 'grants نامعتبر است', 'grants');
+            $type = (string)($g['scope_type'] ?? '');
+            if (!in_array($type, ['org_unit', 'org_unit_tree'], true)) throw new \RestError(400, 'validation_error', 'scope_type باید org_unit یا org_unit_tree باشد', "grants[$i].scope_type");
+            $unit = (int)($g['unit_id'] ?? 0);
+            if (!\Eb\Organization\Api::isActiveUnit($unit)) throw new \RestError(400, 'validation_error', 'واحد پیدا نشد یا بایگانی است', "grants[$i].unit_id");
+            self::getRole((int)($g['role_id'] ?? 0));
+            $clean[(int)$g['role_id'] . ':' . $type . ':' . $unit] = [(int)$g['role_id'], $type, $unit];
+        }
+        self::tx(function () use ($uid, $clean, $actor) {
+            $before = \Database::all("SELECT role_id, scope_type, scope_id FROM eb_perm_grants WHERE user_id = ? AND scope_type <> 'tenant' ORDER BY role_id, scope_type, scope_id", [$uid]);
+            \Database::run("DELETE FROM eb_perm_grants WHERE user_id = ? AND scope_type <> 'tenant'", [$uid]);
+            foreach ($clean as [$rid, $type, $unit]) {
+                \Database::run("INSERT INTO eb_perm_grants (user_id, role_id, scope_type, scope_id, granted_by, granted_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())", [$uid, $rid, $type, $unit, $actor]);
+            }
+            $after = array_map(fn($c) => ['role_id' => $c[0], 'scope_type' => $c[1], 'scope_id' => $c[2]], array_values($clean));
+            \Outbox::record('identity.grants.changed', ['user_id' => $uid, 'scoped' => true, 'before' => count($before), 'after' => count($after), 'by_user_id' => $actor], 'user:' . $uid);
+            return null;
+        });
+        return self::effectiveFor($uid);
     }
 
     /** @return array{0:?string,1:?string,2:?array} */

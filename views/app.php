@@ -32,7 +32,7 @@ window.EB_BOOT = <?= json_encode($boot, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | 
 <body>
 <div id="app" dir="rtl"><div style="display:grid;place-items:center;height:100%;color:#7A847F;font-family:Tahoma">در حال بارگذاری پنل...</div></div>
 <noscript>برای استفاده از پنل، جاوااسکریپت مرورگر را فعال کنید.</noscript>
-<?php foreach (['icons', 'live', 'core', 'jdate', 'p-dashboard', 'p-inbox', 'p-persons', 'p-settings', 'p-analytics', 'p-flows', 'p-widgets', 'p-seo', 'p-team', 'p-agent', 'p-chatplus', 'p-crm', 'p-legacy'] as $js): ?>
+<?php foreach (['icons', 'live', 'core', 'jdate', 'p-dashboard', 'p-inbox', 'p-persons', 'p-settings', 'p-analytics', 'p-flows', 'p-widgets', 'p-seo', 'p-team', 'p-agent', 'p-chatplus', 'p-crm', 'p-org', 'p-legacy'] as $js): ?>
 <script src="assets/<?= $js ?>.js?v=<?= $v ?>"></script>
 <?php endforeach; ?>
 <script>EB.start();</script>

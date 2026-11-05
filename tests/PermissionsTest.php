@@ -70,3 +70,17 @@ test('permissions: key validation', function () {
     ok(Permissions::validKey('work.*.view', true));
     eq(['inbox.page.view'], Permissions::effective('operator', ['pages' => ['inbox']], null, ['bad key', 'x.y']));
 });
+test('permissions: unit-scoped grants — exact unit, subtree, never pages, tenant keys still win', function () {
+    // tree: 1 ─ 3 ─ 5 ;  2 separate.  Ancestors of 5 = [3, 1]
+    $g = [['scope_type' => 'org_unit', 'scope_id' => 3, 'perm_key' => 'org.member.manage'],
+          ['scope_type' => 'org_unit_tree', 'scope_id' => 1, 'perm_key' => 'work.task.view'],
+          ['scope_type' => 'org_unit_tree', 'scope_id' => 1, 'perm_key' => 'templates.page.view']];
+    ok(Permissions::allowsInUnit([], $g, 'org.member.manage', 3, [1]), 'exact unit');
+    ok(!Permissions::allowsInUnit([], $g, 'org.member.manage', 5, [3, 1]), 'org_unit does not cover children');
+    ok(Permissions::allowsInUnit([], $g, 'work.task.view', 5, [3, 1]), 'tree covers descendants');
+    ok(Permissions::allowsInUnit([], $g, 'work.task.view', 1, []), 'tree covers the unit itself');
+    ok(!Permissions::allowsInUnit([], $g, 'work.task.view', 2, []), 'other branch');
+    ok(!Permissions::allowsInUnit([], $g, 'templates.page.view', 5, [3, 1]), 'pages are never unit-scoped');
+    ok(Permissions::allowsInUnit(['*'], [], 'org.unit.manage', 2, []), 'admin');
+    ok(Permissions::allowsInUnit(['org.unit.manage'], [], 'org.unit.manage', 2, []), 'tenant grant applies everywhere');
+});

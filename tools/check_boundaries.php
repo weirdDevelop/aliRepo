@@ -4,6 +4,9 @@
  * A file in src/<A>/ may reference another context <B> only as Eb\<B>\Api or Eb\<B>\Events\*.
  * Usage: php tools/check_boundaries.php [srcDir]   → exit 1 and lists violations.
  */
+/** Table prefix → owning context (extend as contexts gain tables). */
+const EB_TABLE_OWNERS = ['eb_org_' => 'Organization', 'eb_perm_' => 'Identity'];
+
 function eb_boundary_violations(string $srcDir): array
 {
     $out = [];
@@ -20,6 +23,16 @@ function eb_boundary_violations(string $srcDir): array
         foreach ($tokens as $t) {
             if (is_array($t) && in_array($t[0], [T_COMMENT, T_DOC_COMMENT, T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE], true)) continue;
             $clean .= is_array($t) ? $t[1] : $t;
+        }
+        // Tables are owned by one context: SQL in another context must go through the owner's Api.
+        foreach (EB_TABLE_OWNERS as $prefix => $owner) {
+            if ($owner === $ctx) continue;
+            foreach ($tokens as $t) {
+                if (is_array($t) && in_array($t[0], [T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE], true)
+                    && preg_match('/\\b(' . preg_quote($prefix, '/') . '[a-z0-9_]+)/', $t[1], $tm)) {
+                    $out[] = "$rel → table {$tm[1]} (owned by $owner)";
+                }
+            }
         }
         preg_match_all('/\\\\?Eb\\\\([A-Z][A-Za-z0-9_]*)\\\\([A-Z][A-Za-z0-9_]*)/', $clean, $m, PREG_SET_ORDER);
         foreach ($m as [$full, $other, $member]) {

@@ -13,4 +13,5 @@ return [
     ['GET',    '/v2/identity/users',              [Http::class, 'users'],        'identity.role.manage'],
     ['GET',    '/v2/identity/users/{id}/effective', [Http::class, 'effective'],  'identity.role.manage'],
     ['PUT',    '/v2/identity/users/{id}/roles',   [Http::class, 'setUserRoles'], 'identity.role.manage'],
+    ['PUT',    '/v2/identity/users/{id}/scoped-roles', [Http::class, 'setUserScopedGrants'], 'identity.role.manage'],
 ];

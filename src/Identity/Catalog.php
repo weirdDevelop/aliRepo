@@ -31,6 +31,8 @@ final class Catalog
         }
         $out[] = ['key' => '*.page.view', 'label' => 'همه‌ی بخش‌های غیرمدیریتی', 'group' => 'گروهی', 'admin_only' => false];
         $out[] = ['key' => 'customer.person.delete', 'label' => 'حذف و مدیریت مخاطبان', 'group' => 'مشتریان', 'admin_only' => false];
+        $out[] = ['key' => 'org.unit.manage', 'label' => 'مدیریت واحدها (ساخت، جابه‌جایی، مدیر، جانشین)', 'group' => 'سازمان', 'admin_only' => false, 'scopable' => true];
+        $out[] = ['key' => 'org.member.manage', 'label' => 'مدیریت اعضای واحد', 'group' => 'سازمان', 'admin_only' => false, 'scopable' => true];
         $out[] = ['key' => 'identity.role.manage', 'label' => 'مدیریت نقش‌های دسترسی', 'group' => 'سیستم', 'admin_only' => true];
         return $out;
     }
