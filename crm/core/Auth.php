@@ -346,6 +346,17 @@ class Auth
             }
         }
         $perms = $eb['role'] === 'admin' ? [] : self::mapPermissions($permsSrc);
+        // 2.3.0: نقش‌های ویرایشگر دسترسی اعلان‌بان هم بخش‌های CRM می‌دهند (فقط افزودنی؛ تنظیمات CRM همچنان فقط مدیر)
+        if (is_array($perms) && !in_array($eb['role'], ['admin', 'viewer'], true)) {
+            $rk = [];
+            try { $rk = array_column($db->fetchAll(\Permissions::ROLE_KEYS_SQL, [$uid]), 'perm_key'); } catch (\Throwable $e) { /* جدول‌ها هنوز ساخته نشده‌اند */ }
+            if (in_array('*', $rk, true) || in_array('*.page.view', $rk, true)) {
+                $perms = null;   // همان معنای «همه‌ی بخش‌ها»
+            } else {
+                foreach ($rk as $k) if (preg_match('/^crm_([a-z_]+)\.page\.view$/', $k, $m) && $m[1] !== 'settings') $perms[] = $m[1];
+                $perms = array_values(array_unique($perms));
+            }
+        }
         self::$ebReadOnly = ($eb['role'] === 'viewer');
 
         $u = $db->fetchOne('SELECT * FROM users WHERE eb_user_id = ? LIMIT 1', [$uid]);

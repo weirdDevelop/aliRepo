@@ -80,6 +80,8 @@ The CTO / Architect / DBA job titles from §10.2 are **not** given data access b
 
 ## 6. Migration from pages (M2)
 
+> **As built in 2.3.0 (Phase A):** steps 1, 4, 5 done; steps 2–3 replaced by a *virtual* legacy projection computed at check time (no generated roles stored), with new roles additive. See ADR-006 implementation note.
+
 1. Create keys `<page>.page.view` for the 28 panel pages and CRM modules.
 2. For each distinct `(role, pages, groups, can_delete)` combination in `eb_users` and each `eb_roles` node, create a role with exactly those keys.
 3. Grant at tenant scope (matches current behaviour).

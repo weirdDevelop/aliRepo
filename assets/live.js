@@ -202,5 +202,15 @@ async function pollNotifs(first) {
   clearTimeout(notifTimer); notifTimer = setTimeout(() => pollNotifs(false), document.hidden ? 60000 : 15000);
 }
 
-window.EB_LIVE = {api, must, setNow, boot, refreshMeta, pollNotifs, mapConv, mapContact, mapUser, mapTeam, mapTag, mapGroup, mapIdent, buildThread, minsAgo, parseTs, absTs, faDate, dayLabel, clockOf, fullDT, listTime, chKey, tagColor, SRC, rel:m => m};
+/* 2.3.0: REST v2 (api.php/v2/…) — same session and CSRF as the panel; error normalised to {ok:false, error:'…', code} */
+async function v2(method, path, body) {
+  const opts = {method, credentials:'same-origin', headers:{'X-CSRF-Token':BOOT.csrf, 'Accept':'application/json'}};
+  if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  let r;
+  try { r = await fetch('api.php' + path, opts); } catch (e) { return {ok:false, error:'خطای شبکه', code:'network'}; }
+  let j; try { j = await r.json(); } catch (e) { return {ok:false, error:'پاسخ نامعتبر سرور (' + r.status + ')', code:'bad_response'}; }
+  if (j && j.ok === false && j.error && typeof j.error === 'object') return Object.assign({}, j, {error:j.error.message || j.error.code, code:j.error.code, field:j.error.field});
+  return j;
+}
+window.EB_LIVE = {api, must, v2, setNow, boot, refreshMeta, pollNotifs, mapConv, mapContact, mapUser, mapTeam, mapTag, mapGroup, mapIdent, buildThread, minsAgo, parseTs, absTs, faDate, dayLabel, clockOf, fullDT, listTime, chKey, tagColor, SRC, rel:m => m};
 })();

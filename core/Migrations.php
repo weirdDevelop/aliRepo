@@ -62,9 +62,12 @@ final class Migrations
     public static function applied(bool $refresh = false): array
     {
         if (self::$applied !== null && !$refresh) return self::$applied;
-        self::ensureTable();
         $rows = [];
-        foreach (Database::all("SELECT * FROM eb_migrations ORDER BY name") as $r) $rows[$r['name']] = $r;
+        try {
+            foreach (Database::all("SELECT * FROM eb_migrations ORDER BY name") as $r) $rows[$r['name']] = $r;
+        } catch (PDOException $e) {
+            // table not created yet (before the first run) → nothing applied; read paths never create it
+        }
         return self::$applied = $rows;
     }
 
@@ -102,6 +105,7 @@ final class Migrations
         $lock = Database::one("SELECT GET_LOCK('eb_migrate', 0) g");
         if ((int)($lock['g'] ?? 0) !== 1) return ['ok' => false, 'reason' => 'another migration run is in progress'] + $report;
         try {
+            self::ensureTable();
             $applied = self::applied(true);
             foreach (self::files($dir) as $name => $path) {
                 if (isset($applied[$name]) && $applied[$name]['status'] === 'applied') continue;

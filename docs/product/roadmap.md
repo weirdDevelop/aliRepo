@@ -8,7 +8,7 @@
 | Increment | Content | Size | Exit test |
 |---|---|---|---|
 | 2.2.0 kernel ✅ delivered 2026-11-04 (`PATCH-2.2.0.md`) | `src/` PSR-4 loader + boundary test; migration runner + baseline 0001; `eb_outbox` + dispatcher; `eb_jobs` worker in cron; `eb_idempotency`; `Log` helper with request id; REST v2 front controller (`api.php/v2`) with envelope/errors | L | runner applies/verifies on sandbox; outbox at-least-once + idempotent listener test; boundary test fails on a planted violation |
-| 2.3.0 permissions | permission keys, roles, scoped grants, generated roles from current grants, `can()`; ApiPolicy generator emits keys | M | effective-permission diff = 0 for seeded users; role editor UI |
+| 2.3.0 permissions ✅ delivered 2026-11-05 (`PATCH-2.3.0.md`) | permission keys, roles, scoped grants, generated roles from current grants, `can()`; ApiPolicy generator emits keys | M | effective-permission diff = 0 for seeded users; role editor UI |
 | 2.4.0 organization | org units, memberships (effective dates), managers, delegation; import `eb_roles` tree + `eb_teams` + CRM `staff.unit` (report) | M | cycle prevention; import report reviewed by owner |
 | 2.5.0 work core | projects, boards, states, tasks, assignees/watchers, comments (public/internal), checklists, attachments (Files), history, optimistic locking; Kanban + table + My Work views (SPA) | L | Scenario A minus approvals; concurrent edit → 409 |
 | 2.6.0 CRM task migration | copy CRM `tasks`/`projects` → Work; CRM task page reads Work; create-task-from lead/customer/conversation | M | counts equal; flagged assignee list delivered |

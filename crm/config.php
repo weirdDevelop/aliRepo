@@ -100,6 +100,7 @@ define('ALLOW_USER_UPLOAD', false);
 spl_autoload_register(function ($className) {
     // کلاس مشترک با اعلان‌بان (نرمال‌سازی یکسان شماره در هر دو سیستم — 2.1.5)
     if ($className === 'PhoneNumber') { require_once EB_ROOT . '/core/PhoneNumber.php'; return; }
+    if ($className === 'Permissions') { require_once EB_ROOT . '/core/Permissions.php'; return; }   // 2.3.0
     $paths = [
         CORE_PATH . '/' . $className . '.php',
         MODEL_PATH . '/' . $className . '.php',

@@ -18,10 +18,10 @@ final class ApiPolicy
 {
     /** ?export=type → pages (mirror of the pages that offer the export) */
     const EXPORTS = [
-        'customers'          => ['persons'],
-        'messages'           => ['inbox'],
-        'notice_leads'       => ['notices'],
-        'analytics_sessions' => ['analytics'],
+        'customers'          => ['persons.page.view'],
+        'messages'           => ['inbox.page.view'],
+        'notice_leads'       => ['notices.page.view'],
+        'analytics_sessions' => ['analytics.page.view'],
     ];
 
     const DENY_MSG = 'دسترسی به این بخش برای حساب شما فعال نیست؛ از مدیر بخواهید دسترسی صفحه‌ی مربوط را بدهد.';
@@ -35,8 +35,9 @@ final class ApiPolicy
     }
 
     /**
-     * Pure decision. $pages: ['*'] | [page…] | [] | null (unknown action).
-     * @param callable(string):bool $canAccess
+     * Pure decision. $keys: ['*'] | [permission key…] | [] | null (unknown action).
+     * 2.3.0: entries are permission keys ('<page>.page.view'); checked with Auth::can().
+     * @param callable(string):bool $canAccess  key → allowed
      * @return array{allow:bool, reason:string}
      */
     public static function decide(?array $pages, bool $isAdmin, callable $canAccess): array
@@ -45,7 +46,7 @@ final class ApiPolicy
         if ($pages === null) return ['allow' => false, 'reason' => 'unknown_action'];
         if (in_array('*', $pages, true)) return ['allow' => true, 'reason' => 'any_user'];
         if (!$pages) return ['allow' => false, 'reason' => 'admin_only'];
-        foreach ($pages as $p) if ($canAccess($p)) return ['allow' => true, 'reason' => 'page:' . $p];
+        foreach ($pages as $p) if ($canAccess($p)) return ['allow' => true, 'reason' => 'key:' . $p];
         return ['allow' => false, 'reason' => 'no_page_access'];
     }
 
@@ -81,7 +82,7 @@ final class ApiPolicy
     /** Called in index.php before api/handler.php. Exits with 403 JSON when denied. */
     public static function enforceApi(string $action): void
     {
-        $d = self::decideApi($action, Auth::isAdmin(), [Auth::class, 'canAccess']);
+        $d = self::decideApi($action, Auth::isAdmin(), [Auth::class, 'can']);
         if (self::gate($d, "api=$action")) return;
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');
@@ -91,7 +92,7 @@ final class ApiPolicy
     /** Called in index.php before api/export.php. */
     public static function enforceExport(string $type): void
     {
-        $d = self::decideExport($type, Auth::isAdmin(), [Auth::class, 'canAccess']);
+        $d = self::decideExport($type, Auth::isAdmin(), [Auth::class, 'can']);
         if (self::gate($d, "export=$type")) return;
         http_response_code(403);
         header('Content-Type: text/plain; charset=utf-8');

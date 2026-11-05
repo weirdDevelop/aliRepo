@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/Permissions.php';   // 2.3.0: Auth is used by entry points without the autoloader
 /**
  * core/Auth.php
  * احراز هویت ساده مبتنی بر session با سه نقش: admin (مدیر)، supervisor (سرپرست)، operator (پشتیبان).
@@ -282,16 +283,36 @@ class Auth
      */
     public static function canAccess(string $page): bool
     {
-        if (self::isAdmin()) return true;
-        // صفحات همیشه‌مجاز برای هر اپراتور
-        $always = ['dashboard', 'logout', 'profile', 'crm_me'];
-        if (in_array($page, $always, true)) return true;
-        // صفحات فقط-admin
-        $adminOnly = ['channels', 'settings', 'botsettings', 'apilog', 'ai', 'webchat', 'notices', 'crm_settings'];
-        if (in_array($page, $adminOnly, true)) return false;
-        $perms = self::permissions();
-        if (empty($perms['pages'])) return true; // محدودیتی تعریف نشده
-        return in_array($page, $perms['pages'], true);
+        // 2.3.0: همان تصمیم قبلی (اثبات‌شده با تست تفاضلی) + نقش‌های تازه‌ی ویرایشگر دسترسی — core/Permissions.php
+        return Permissions::allowsPage(self::keys(), $page);
+    }
+
+    /** 2.3.0: کلید مجوز (مثل work.task.approve) — ADR-006 */
+    public static function can(string $key): bool
+    {
+        return Permissions::allows(self::keys(), $key);
+    }
+
+    private static ?array $keysCache = null;
+    private static string $keysSig = '';
+
+    /** کلیدهای مؤثر کاربر فعلی: پروژکشن تنظیمات قدیمی + نقش‌های اعطاشده. در هر درخواست یک‌بار. */
+    public static function keys(): array
+    {
+        $uid = (int)(self::id() ?? 0);
+        if ($uid <= 0) return [];
+        $sig = $uid . '|' . self::role() . '|' . (string)($_SESSION['eb_perms'] ?? '');
+        if (self::$keysCache !== null && self::$keysSig === $sig) return self::$keysCache;
+        $role = (string)self::role();
+        $org = self::orgRole();
+        $roleKeys = [];
+        // بدون autoloader (چند ورودی قدیمی) Migrations در دسترس نیست → فقط پروژکشن قدیمی (همان رفتار قبل)
+        if (!in_array($role, ['admin', 'viewer'], true) && class_exists('Migrations') && Migrations::isApplied('0003_permissions')) {
+            try { $roleKeys = array_column(Database::all(Permissions::ROLE_KEYS_SQL, [$uid]), 'perm_key'); }
+            catch (Throwable $e) { error_log('[auth] role keys: ' . $e->getMessage()); }
+        }
+        self::$keysSig = $sig;
+        return self::$keysCache = Permissions::effective($role, Permissions::decodeLegacy($_SESSION['eb_perms'] ?? null), $org ? $org['pages'] : null, $roleKeys);
     }
 
     /**
@@ -309,10 +330,8 @@ class Auth
     /** آیا کاربر فعلی اجازه‌ی حذف/مدیریت مخاطبان را دارد؟ admin همیشه. */
     public static function canManageCustomers(): bool
     {
-        if (self::isAdmin()) return true;
-        $perms = self::permissions();
-        // اگر کلید can_delete_customers صریحاً true باشد
-        return !empty($perms['can_delete_customers']);
+        // 2.3.0: کلید customer.person.delete (از can_delete_customers قدیمی یا نقش تازه)
+        return self::can('customer.person.delete');
     }
 
     /** آیا دسترسی به داده‌ی مشتریان محدود به گروه خاصی است؟ */

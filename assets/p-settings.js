@@ -7,7 +7,7 @@ const isAdmin = () => !!(D.me && D.me.is_admin);
 const SECS = [
   {h:'حساب و ظاهر'}, ['appearance', 'ظاهر و تم', 'palette'], ['me', 'پروفایل و رمز', 'user-circle'],
   {h:'کسب‌وکار', admin:1}, ['brand', 'برند و شرکت', 'paint-brush', 1], ['channels', 'اتصال کانال‌ها', 'plugs-connected', 1],
-  {h:'تیم', admin:1}, ['operators', 'اپراتورها و دسترسی', 'user-gear', 1], ['roles', 'چارت سازمانی و نقش‌ها', 'tree-structure', 1], ['sites', 'سایت‌ها (چندسایته)', 'globe-hemisphere-west', 1], ['routing', 'تیم‌ها، SLA و ساعت کاری', 'arrows-split', 1], ['inbox', 'صندوق ورودی و پیگیری', 'tray', 1],
+  {h:'تیم', admin:1}, ['operators', 'اپراتورها و دسترسی', 'user-gear', 1], ['roles', 'چارت سازمانی و نقش‌ها', 'tree-structure', 1], ['access', 'نقش‌های دسترسی', 'key', 1], ['sites', 'سایت‌ها (چندسایته)', 'globe-hemisphere-west', 1], ['routing', 'تیم‌ها، SLA و ساعت کاری', 'arrows-split', 1], ['inbox', 'صندوق ورودی و پیگیری', 'tray', 1],
   ...((window.EB_BOOT || {}).crm && EB_BOOT.crm.present ? [{h:'CRM', admin:1}, ['crm', 'CRM و انتقال داده', 'database', 1], ...(EB_BOOT.crm.ready ? [['crmset', 'تلفنچی، سایت و CRM', 'phone-call', 1]] : [])] : []),
   {h:'سیستم', admin:1}, ['system', 'سیستم و نگهداری', 'hard-drives', 1], ['proxy', 'پروکسی و دسترسی', 'shield-check', 1], 
 ];
@@ -143,6 +143,11 @@ const LOADERS = {
     if (b.ok) { D.ops = b.users.map(L().mapUser); D.teams = b.teams.map(L().mapTeam); D.groups = b.groups.map(L().mapGroup); }
   },
   roles: async () => { const r = await L().api('roles_list'); if (!r.ok) throw new Error(r.error); S.roles = r.roles; },
+  access: async () => {   // 2.3.0
+    const [c, r, u] = await Promise.all([L().v2('GET', '/v2/identity/permissions'), L().v2('GET', '/v2/identity/roles'), L().v2('GET', '/v2/identity/users')]);
+    for (const x of [c, r, u]) if (!x.ok) throw new Error(x.error);
+    S.acc = {catalog:c.data, roles:r.data, users:u.data};
+  },
   sites: async () => { const r = await L().api('sites_list'); if (!r.ok) throw new Error(r.error); S.sites = r.sites; S.siteCur = r.current; },
   inbox: async () => { const r = await L().api('desk_inbox_cfg'); if (!r.ok) throw new Error(r.error); S.icfg = JSON.parse(JSON.stringify({visibility:r.visibility, prio_rules:r.prio_rules, csat:r.csat, followups:r.followups.map(f => Object.assign(f, {_saved:true}))})); S.icfgStats = r.followup_stats || {}; },
   routing: async () => { const r = await L().api('support_status'); S.support = r.ok ? r.support : {}; },
@@ -150,9 +155,69 @@ const LOADERS = {
   proxy: async () => { const r = await L().api('v4_proxy_get'); if (!r.ok) throw new Error(r.error); S.px = r; S.pxList = JSON.parse(JSON.stringify(r.proxies)); S.pxRoutes = JSON.parse(JSON.stringify(r.routes || {})); },
   
 };
-const VIEWS = {appearance, me, brand, channels, operators, roles, sites, routing, inbox:inboxCfg, system, proxy,
+const VIEWS = {appearance, me, brand, channels, operators, roles, access, sites, routing, inbox:inboxCfg, system, proxy,
   crm: () => `<div id="crmSetBox">${EB.crmSet ? EB.crmSet.html() : ''}</div>`,
   crmset: () => `${head('تلفنچی، سایت و CRM', 'اتصال تلفنچی، دیتابیس سایت جاکجاست، تبدیل صدا به متن، داخلی‌ها، مراجع سرنخ و تنظیمات مالی CRM.')}<div class="card" style="overflow:hidden;height:calc(100vh - 210px);min-height:520px;margin-top:12px"><div id="crmFrame" style="height:100%"></div></div>`,
+};
+
+/* ===== 2.3.0: نقش‌های دسترسی (مدل مجوز تازه، ADR-006) — فقط به دسترسی‌های فعلی اضافه می‌کنند ===== */
+function access() {
+  const roles = S.acc.roles, users = S.acc.users.filter(u => u.role !== 'admin');
+  const nameOf = id => (roles.find(r => r.id === id) || {}).name || ('#' + id);
+  const meId = D.me ? +D.me.id : 0;
+  return `${head('نقش‌های دسترسی', 'هر نقش مجموعه‌ای از مجوزهاست. نقش‌ها به دسترسی‌هایی که در «اپراتورها و دسترسی» تنظیم کرده‌اید <b>اضافه</b> می‌شوند و چیزی را کم نمی‌کنند. بخش‌های فقط-مدیر در نقش قرار نمی‌گیرند.', `<button class="btn btn-p" data-act="acc-new">${ic('plus')}نقش جدید</button>`)}
+  <div class="card" style="margin-top:16px">${roles.length ? `<div class="tbl-wrap"><table class="tbl resp"><thead><tr><th>نقش</th><th>مجوزها</th><th>کاربران</th><th></th></tr></thead><tbody>
+  ${roles.map(r => `<tr data-role="${r.id}"><td><b>${E(r.name)}</b>${r.description ? `<div class="xs muted">${E(r.description)}</div>` : ''}</td><td class="small">${fa(r.keys.length)} مجوز</td><td class="small">${fa(r.members)}</td>
+    <td style="white-space:nowrap"><button class="btn btn-sm" data-act="acc-edit" data-id="${r.id}">${ic('pencil-simple')}ویرایش</button> <button class="btn btn-sm btn-g" data-act="acc-del" data-id="${r.id}" ${r.members ? 'disabled title="اول این نقش را از کاربران بگیرید"' : ''}>${ic('trash')}</button></td></tr>`).join('')}
+  </tbody></table></div>` : `<div class="card-b">${empty('key', 'هنوز نقشی ساخته نشده', 'دسترسی همه‌ی کاربران مثل قبل از بخش «اپراتورها و دسترسی» می‌آید.')}</div>`}</div>
+  <h3 style="margin:22px 0 8px">نقش‌های هر کاربر</h3>
+  <div class="card"><div class="tbl-wrap"><table class="tbl resp"><thead><tr><th>کاربر</th><th>نقش‌ها</th><th></th></tr></thead><tbody>
+  ${users.map(u => `<tr data-user="${u.id}"><td><b class="ltr">${E(u.username)}</b>${u.role === 'viewer' ? ' ' + pill('نمایشی', 'warn') : ''}${+u.is_active ? '' : ' ' + pill('غیرفعال', 'warn')}</td>
+    <td class="small">${u.role_ids.length ? u.role_ids.map(id => pill(E(nameOf(id)), 'info')).join(' ') : '<span class="muted">—</span>'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-sm" data-act="acc-user" data-id="${u.id}" ${u.id === meId ? 'disabled title="نمی‌توانید به خودتان نقش بدهید"' : ''}>${ic('key')}نقش‌ها</button> <button class="btn btn-sm btn-g" data-act="acc-eff" data-id="${u.id}">${ic('eye')}دسترسی مؤثر</button></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+function accRoleForm(r) {
+  const groups = {}; S.acc.catalog.forEach(c => { (groups[c.group] = groups[c.group] || []).push(c); });
+  const has = new Set(r ? r.keys : []);
+  return `<div class="stack s20" style="padding:18px">${field('نام نقش', `<input class="inp" id="accName" maxlength="100" value="${E(r ? r.name : '')}">`)}${field('توضیح', `<input class="inp" id="accDesc" maxlength="500" value="${E(r && r.description || '')}">`)}
+  <div class="card flat"><div class="card-b" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px 20px">${Object.entries(groups).map(([g, items]) => `<div><div class="lab" style="margin-bottom:6px">${E(g)}</div>${items.map(c => `<label class="row small" style="padding:3px 0;${c.admin_only ? 'opacity:.55' : ''}"><input type="checkbox" class="cb" name="accKey" value="${E(c.key)}" ${has.has(c.key) ? 'checked' : ''} ${c.admin_only ? 'disabled' : ''}>${E(c.label)}${c.admin_only ? ' <span class="xs muted">(فقط مدیر)</span>' : ''}</label>`).join('')}</div>`).join('')}</div></div></div>`;
+}
+function accOpen(r) {
+  const dw = drawer({title:r ? 'ویرایش نقش' : 'نقش جدید', sub:'مجوزهایی که این نقش می‌دهد', size:'lg', body:accRoleForm(r), foot:'<button class="btn" data-close>انصراف</button><button class="btn btn-p" data-ok>ذخیره</button>'});
+  dw.el.querySelector('[data-ok]').onclick = async e => {
+    const payload = {name:val('accName'), description:val('accDesc'), keys:$$('input[name=accKey]:checked').map(c => c.value)};
+    if (!payload.name) return toast('نام نقش را وارد کنید', 'err');
+    const res = await run(e.currentTarget, () => r ? L().v2('PATCH', '/v2/identity/roles/' + r.id, payload) : L().v2('POST', '/v2/identity/roles', payload));
+    if (!res.ok) return toast(res.error, 'err');
+    dw.close(); toast('نقش ذخیره شد'); body();
+  };
+}
+A['acc-new'] = () => accOpen(null);
+A['acc-edit'] = el => accOpen(S.acc.roles.find(r => r.id === +el.dataset.id));
+A['acc-del'] = el => { const r = S.acc.roles.find(x => x.id === +el.dataset.id); if (!r) return;
+  confirm({title:'حذف نقش ' + E(r.name), text:'این نقش به کسی داده نشده و حذفش دسترسی کسی را تغییر نمی‌دهد.', ok:'حذف', danger:true, onOk:async () => { const res = await L().v2('DELETE', '/v2/identity/roles/' + r.id); if (!res.ok) return toast(res.error, 'err'); toast('حذف شد'); body(); }}); };
+A['acc-user'] = el => {
+  const u = S.acc.users.find(x => x.id === +el.dataset.id); if (!u) return;
+  const dw = drawer({title:'نقش‌های ' + E(u.username), sub:'نقش‌ها به دسترسی فعلی این کاربر اضافه می‌شوند', size:'md',
+    body:`<div class="stack s12" style="padding:18px">${S.acc.roles.length ? S.acc.roles.map(r => `<label class="row small"><input type="checkbox" class="cb" name="accUR" value="${r.id}" ${u.role_ids.includes(r.id) ? 'checked' : ''}><b>${E(r.name)}</b><span class="xs muted">${fa(r.keys.length)} مجوز</span></label>`).join('') : empty('key', 'نقشی وجود ندارد', 'اول یک نقش بسازید.')}</div>`,
+    foot:'<button class="btn" data-close>انصراف</button><button class="btn btn-p" data-ok>ذخیره</button>'});
+  dw.el.querySelector('[data-ok]').onclick = async e => {
+    const res = await run(e.currentTarget, () => L().v2('PUT', '/v2/identity/users/' + u.id + '/roles', {role_ids:$$('input[name=accUR]:checked').map(c => +c.value)}));
+    if (!res.ok) return toast(res.error, 'err');
+    dw.close(); toast('نقش‌های کاربر ذخیره شد'); body();
+  };
+};
+A['acc-eff'] = async el => {
+  const res = await L().v2('GET', '/v2/identity/users/' + el.dataset.id + '/effective'); if (!res.ok) return toast(res.error, 'err');
+  const d = res.data, lab = {}; S.acc.catalog.forEach(c => { lab[c.key] = c.label; });
+  const src = k => (d.sources[k] || []).map(s => s === 'legacy' ? 'تنظیمات اپراتور' : 'نقش «' + s.slice(5) + '»').join('، ');
+  const open = Object.entries(d.pages).filter(([, v]) => v).map(([p]) => p);
+  drawer({title:'دسترسی مؤثر ' + E(d.user.username), sub:d.keys.includes('*') ? 'مدیر/نمایشی: همه‌ی بخش‌ها' : fa(open.length) + ' بخش باز', size:'md',
+    body:`<div class="stack s12" style="padding:18px"><div class="small">${open.map(p => pill(E(lab[p + '.page.view'] || p), 'ok')).join(' ')}</div>
+    ${d.can_delete_customers ? `<div class="small">${pill('حذف مخاطب', 'warn')}</div>` : ''}
+    <div class="card flat"><div class="card-b xs">${d.keys.map(k => `<div class="row" style="justify-content:space-between"><span class="ltr">${E(k)}</span><span class="muted">${E(src(k))}</span></div>`).join('')}</div></div></div>`,
+    foot:'<button class="btn" data-close>بستن</button>'});
 };
 
 async function body() {

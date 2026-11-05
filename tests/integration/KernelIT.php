@@ -11,15 +11,18 @@ function kit_calls(Sandbox $sb): array {
     return $sb->pdo()->query("SELECT k, n FROM it_calls ORDER BY k")->fetchAll(PDO::FETCH_KEY_PAIR);
 }
 
-it('migrations: fresh database → 0001/0002 pending, run applies both, second run is a no-op', function (Sandbox $sb) {
+it('migrations: fresh database → all pending, run applies them in order, second run is a no-op', function (Sandbox $sb) {
     $pdo = $sb->pdo();
-    $pdo->exec("DROP TABLE IF EXISTS eb_migrations, eb_outbox, eb_outbox_consumed, eb_jobs, eb_idempotency");
+    $pdo->exec("DROP TABLE IF EXISTS eb_migrations, eb_outbox, eb_outbox_consumed, eb_jobs, eb_idempotency, eb_perm_grants, eb_perm_role_keys, eb_perm_roles");
     exec('cd ' . escapeshellarg($sb->dir) . ' && php cli/migrate.php status', $st);
     ok(strpos(implode("\n", $st), 'pending    0001_baseline') !== false && strpos(implode("\n", $st), 'pending    0002_kernel') !== false, implode("\n", $st));
     exec('cd ' . escapeshellarg($sb->dir) . ' && php cli/migrate.php run', $o, $rc);
     eq(0, $rc, implode("\n", $o));
     $r = json_decode(implode("\n", $o), true);
-    eq(['0001_baseline', '0002_kernel'], $r['applied']);
+    $all = array_map(fn($f) => basename($f, '.php'), glob($sb->dir . '/migrations/[0-9][0-9][0-9][0-9]_*.php'));
+    sort($all);
+    eq($all, $r['applied'], 'every migration file must be applied in order');
+    ok(in_array('0002_kernel', $all, true));
     foreach (['eb_outbox', 'eb_outbox_consumed', 'eb_jobs', 'eb_idempotency'] as $t) ok((bool)$pdo->query("SHOW TABLES LIKE '$t'")->fetchColumn(), $t);
     $o = []; exec('cd ' . escapeshellarg($sb->dir) . ' && php cli/migrate.php run', $o, $rc);
     eq([], json_decode(implode("\n", $o), true)['applied']);

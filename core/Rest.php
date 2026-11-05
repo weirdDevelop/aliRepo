@@ -84,7 +84,8 @@ final class Rest
             if ($write && Auth::isViewer()) throw new RestError(403, 'forbidden', self::MSG['read_only']);
             if ($write && !Csrf::verify($req['headers']['x-csrf-token'] ?? null)) throw new RestError(403, 'csrf', self::MSG['csrf']);
             $perm = $route[3];
-            $allowed = $perm === 'any' ? true : ($perm === 'admin' ? Auth::isRealAdmin() : Auth::canAccess($perm));
+            // 'any' | 'admin' | permission key (context.resource.action) | legacy page name
+            $allowed = $perm === 'any' ? true : ($perm === 'admin' ? Auth::isRealAdmin() : (strpos($perm, '.') !== false ? Auth::can($perm) : Auth::canAccess($perm)));
             if (!$allowed) throw new RestError(403, 'forbidden', self::MSG['forbidden'], null, ['permission' => $perm]);
 
             $idemKey = $req['headers']['idempotency-key'] ?? null;

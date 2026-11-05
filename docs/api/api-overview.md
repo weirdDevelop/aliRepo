@@ -37,7 +37,8 @@
 
 ## 5. Implemented so far
 
-2.2.0: `GET /v2/platform/ping` (any user) · `GET /v2/platform/health` (admin) · `GET /v2/platform/jobs?status=` (admin) · `POST /v2/platform/jobs/{id}/retry` (admin, Idempotency-Key, audited). Access levels are `any|admin|<page>` until permission keys land in 2.3.0.
+2.2.0: `GET /v2/platform/ping` (any user) · `GET /v2/platform/health` (admin) · `GET /v2/platform/jobs?status=` (admin) · `POST /v2/platform/jobs/{id}/retry` (admin, Idempotency-Key, audited). 
+2.3.0: `GET /v2/identity/me/permissions` (any user) · `GET /v2/identity/permissions` · `GET|POST /v2/identity/roles` · `GET|PATCH|DELETE /v2/identity/roles/{id}` · `GET /v2/identity/users` · `GET /v2/identity/users/{id}/effective` · `PUT /v2/identity/users/{id}/roles` (all `identity.role.manage`, admin-only). Route access is now `any|admin|<permission key>`.
 
 ## 6. Related
 
