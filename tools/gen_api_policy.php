@@ -27,8 +27,23 @@ const GLOBAL_FILES = ['assets/core.js', 'assets/live.js', 'assets/icons.js', 'as
 // The settings bundle hosts the admin-only "settings" page and the self-service "me" tab.
 // Self-service actions verified to act only on Auth::id() (or require admin for another user).
 const SETTINGS_SELF_SERVICE = ['my_password_change', 'my_username_change', 'my_profile', 'desk_user_profile', 'desk_avatar_upload', 'desk_boot', 'desk_prefs'];
-// Included sub-views → the page that embeds them
-const EMBEDDED = ['views/carousel-editor.php' => ['instagram', 'botbuilder']];
+// Included sub-views → the pages that embed them. 2.4.1: detected from `require __DIR__ . '/../x.php'`
+// in views/pages/* (the hand-written list missed templates and autoreply → their carousel editor got 403).
+function embedded(): array {
+    static $map = null;
+    if ($map !== null) return $map;
+    $map = ['views/carousel-editor.php' => ['instagram', 'botbuilder']];   // instagram embeds it via its own loader
+    foreach (glob('views/pages/*.php') as $f) {
+        if (!preg_match('#^views/pages/([a-z_]+)(\.js)?\.php$#', $f, $pm)) continue;
+        preg_match_all("#(?:require|include)(?:_once)?\s*\(?\s*__DIR__\s*\.\s*'/\.\./([a-z_-]+\.php)'#", file_get_contents($f), $m);
+        foreach ($m[1] as $sub) {
+            $k = 'views/' . $sub;
+            $map[$k] = array_values(array_unique(array_merge($map[$k] ?? [], [$pm[1]])));
+            sort($map[$k]);
+        }
+    }
+    return $map;
+}
 
 function actions(): array {
     $a = [];
@@ -44,7 +59,7 @@ function actions(): array {
 /** UI file → list of page keys ('*' = global) */
 function attribute(string $f): array {
     if (in_array($f, GLOBAL_FILES, true)) return ['*'];
-    if (isset(EMBEDDED[$f])) return EMBEDDED[$f];
+    $emb = embedded(); if (isset($emb[$f])) return $emb[$f];
     if (preg_match('#^views/pages/([a-z_]+)(\.js)?\.php$#', $f, $m)) return [$m[1]];
     if (preg_match('#^assets/p-[a-z]+\.js$#', $f)) {
         $s = file_get_contents($f);
@@ -67,7 +82,12 @@ foreach ($ui as $f) {
     $pages = attribute($f);
     $s = file_get_contents($f);
     preg_match_all("/['\"]([a-z0-9_]+)['\"]/", $s, $m);
-    $refs = array_intersect(array_unique($m[1]), $acts);
+    $lits = array_unique($m[1]);
+    // 2.4.1: names built at runtime — api('igpost_' + act) with igpAct('retry') elsewhere in the same file.
+    // For each literal prefix followed by `+`, count prefix+literal for every literal in the file.
+    preg_match_all("/['\"]([a-z0-9]+_)['\"]\s*\+/", $s, $pm);
+    foreach (array_unique($pm[1]) as $pre) foreach ($lits as $l) $lits[] = $pre . $l;
+    $refs = array_intersect(array_unique($lits), $acts);
     if (!$refs) continue;
     if (!$pages) { $unattributed[] = $f; continue; }
     foreach ($refs as $a) {

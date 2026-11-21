@@ -77,7 +77,7 @@ async function testEmail(){
   const d=await api('email_test',{to});
   r.innerHTML=d.ok?'<span class="tag tag-ok">ارسال شد</span>':'<span class="tag tag-warn">خطا</span> '+esc(d.error||'');
 }
-loadEmail();
+document.addEventListener("DOMContentLoaded", loadEmail);   // 2.4.1: api() در layout بعد از این اسکریپت تعریف می‌شود
 </script>
 
 <!-- پروکسی ضدفیلترینگ (مورد ۳) -->
@@ -169,7 +169,7 @@ async function testPx(target){
     ? `<span class="tag tag-ok">وصل شد</span> <span class="muted">کد ${faNum(d.code)} · ${faNum(d.ms)} میلی‌ثانیه</span>`
     : `<span class="tag tag-warn">ناموفق</span> ${esc(d.error||'')}`;
 }
-loadPx();
+document.addEventListener("DOMContentLoaded", loadPx);
 </script>
 <!-- اینستاگرام (دایرکت) — با Instagram Login، بدون نیاز به صفحه‌ی فیسبوک -->
 <div class="card card-pad" id="igGraphCard" style="margin-top:16px;max-width:620px">
@@ -298,7 +298,7 @@ async function igTest(){
   }
 })();
 
-loadIg();
+document.addEventListener("DOMContentLoaded", loadIg);
 </script>
 
 <?php endif; ?>
